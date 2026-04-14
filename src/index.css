@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  :root {
+    --bg: #F8FAFC;
+    --ink: #0F172A;
+    --line: #E2E8F0;
+    --accent: #2563EB;
+    --card-bg: #FFFFFF;
+    --muted: #64748B;
+  }
+
+  body {
+    @apply bg-[var(--bg)] text-[var(--ink)] font-sans antialiased;
+  }
+
+  /* Custom scrollbar for a cleaner look */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-200 rounded-full hover:bg-slate-300 transition-colors;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white border border-slate-200/60 shadow-sm rounded-2xl;
+  }
+
+  .data-row {
+    @apply flex items-center p-4 border-b border-slate-50 transition-all hover:bg-slate-50/80;
+  }
+
+  .btn-primary {
+    @apply bg-slate-900 text-white px-4 py-2 rounded-xl font-bold hover:bg-slate-800 transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-white text-slate-700 border border-slate-200 px-4 py-2 rounded-xl font-bold hover:bg-slate-50 transition-all shadow-sm active:scale-95;
+  }
+
+  .nav-tab {
+    @apply flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap text-slate-500 hover:text-slate-900 hover:bg-slate-100/50;
+  }
+
+  .nav-tab-active {
+    @apply bg-slate-900 text-white shadow-md shadow-slate-200;
+  }
+
+  .section-header {
+    @apply text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2;
+  }
+
+  .kpi-value {
+    @apply text-3xl font-black text-slate-900 tracking-tight;
+  }
+
+  .kpi-label {
+    @apply text-[10px] font-black text-slate-400 uppercase tracking-[0.2em];
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
