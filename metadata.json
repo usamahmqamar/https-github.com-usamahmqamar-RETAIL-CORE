@@ -1,5 +1,5 @@
 {
   "name": "Retail Core KPI Dashboard",
-  "description": "A high-level business performance dashboard for retail SaaS, featuring sales, profit, inventory, and expense tracking with real-time trends.",
+  "description": "A high-level business performance dashboard for retail SaaS, featuring sales, profit, inventory, and expense tracking with integrated barcode scanning.",
   "requestFramePermissions": ["camera"]
 }

@@ -28,9 +28,10 @@ import { Html5QrcodeScanner } from 'html5-qrcode';
 interface POSProps {
   onOrderComplete?: () => void;
   currentUser: UserType | null;
+  lastScannedCode: string | null;
 }
 
-export const POS: React.FC<POSProps> = ({ onOrderComplete, currentUser }) => {
+export const POS: React.FC<POSProps> = ({ onOrderComplete, currentUser, lastScannedCode }) => {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [cart, setCart] = useState<OrderItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -59,6 +60,12 @@ export const POS: React.FC<POSProps> = ({ onOrderComplete, currentUser }) => {
     };
     loadInventory();
   }, []);
+
+  useEffect(() => {
+    if (lastScannedCode) {
+      handleBarcodeSubmit(lastScannedCode);
+    }
+  }, [lastScannedCode]);
 
   useEffect(() => {
     if (showScanner) {

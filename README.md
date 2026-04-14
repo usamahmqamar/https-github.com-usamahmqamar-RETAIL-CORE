@@ -1,20 +1,26 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Retail Core KPI Dashboard
 
-# Run and deploy your AI Studio app
+## Status: CORE KPI DASHBOARD BASELINE
+**Date:** 2026-04-14
+**Version:** 2.4 (Baseline)
 
-This contains everything you need to run your app locally.
+### Overview
+A high-level business performance dashboard for retail SaaS, featuring sales, profit, inventory, and expense tracking with real-time trends.
 
-View your app in AI Studio: https://ai.studio/apps/79057891-4b84-4af1-bb7b-046fa3703ec3
+### Key Features
+- **Real-time KPI Tracking:** Sales, Profit, Inventory, and Expenses.
+- **Advanced Analytics:** Sales trends, forecasting, and performance metrics.
+- **Inventory Management:** Insights and stock tracking.
+- **POS System:** Point of Sale interface for transactions.
+- **User & Role Management:** RBAC (Role-Based Access Control) with audit logging.
+- **Multi-branch Support:** Manage multiple retail locations.
+- **Barcode Scanning:** (Newly Added) Integrated barcode scanning for inventory and POS lookup.
 
-## Run Locally
-
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### Tech Stack
+- React 19
+- Vite
+- Tailwind CSS
+- Lucide React (Icons)
+- Recharts (Data Visualization)
+- Motion (Animations)
+- html5-qrcode (Barcode Scanning)

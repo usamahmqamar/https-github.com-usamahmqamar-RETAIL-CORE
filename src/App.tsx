@@ -3,8 +3,10 @@ import {
   LayoutDashboard, TrendingUp, Package, Receipt, Wallet, RefreshCcw, 
   BarChart3, Boxes, PieChart, Trophy, ShoppingCart, Users, Store, 
   Globe, AlertTriangle, ArrowRight, Shield, History, UserCircle, LogOut,
-  ChevronDown, Truck, ClipboardList, Building2
+  ChevronDown, Truck, ClipboardList, Building2, Camera
 } from 'lucide-react';
+import { auth } from './lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import { fetchDashboardData, getCurrentUser, fetchUsers, fetchRoles, switchUser, hasPermission } from './services/api';
 import { DashboardData, User, Role, ModuleName } from './types';
 import { KPICard } from './components/KPICard';
@@ -24,6 +26,7 @@ import { AuditLogViewer } from './components/AuditLogViewer';
 import { SupplierManagement } from './components/SupplierManagement';
 import { PurchaseOrderManagement } from './components/PurchaseOrderManagement';
 import { BranchManagement } from './components/BranchManagement';
+import { BarcodeScanner } from './components/BarcodeScanner';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 
@@ -39,6 +42,23 @@ export default function App() {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [showUserSwitcher, setShowUserSwitcher] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+  const [lastScannedCode, setLastScannedCode] = useState<string | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setIsAuthReady(true);
+      if (user) {
+        loadInitialData();
+      } else {
+        // For demo, we still load if not authenticated, 
+        // but in production you'd show a login screen
+        loadInitialData();
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   const loadInitialData = async () => {
     setLoading(true);
@@ -61,7 +81,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    loadInitialData();
+    // loadInitialData is now called by the auth listener above
   }, []);
 
   const handleSwitchUser = async (userId: string) => {
@@ -73,6 +93,18 @@ export default function App() {
       setActiveTab('dashboard');
     } catch (error) {
       console.error("Failed to switch user:", error);
+    }
+  };
+
+  const handleBarcodeScan = (code: string) => {
+    setLastScannedCode(code);
+    // If we are in POS or Inventory, we could potentially trigger a search
+    // For now, we'll just show a notification (handled by the notification center if we had a trigger)
+    console.log("Scanned Barcode:", code);
+    
+    // Auto-navigate to relevant tab if it makes sense
+    if (activeTab !== 'pos' && activeTab !== 'inventory') {
+      setActiveTab('inventory');
     }
   };
 
@@ -236,6 +268,15 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setShowScanner(true)}
+              className="p-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 flex items-center gap-2"
+              title="Scan Barcode"
+            >
+              <Camera className="w-4 h-4" />
+              <span className="hidden sm:inline text-xs font-bold">Scan</span>
+            </button>
+
             {canView('pos') && (
               <button 
                 onClick={() => setActiveTab('pos')}
@@ -314,6 +355,15 @@ export default function App() {
             </button>
           </div>
         </header>
+
+        <AnimatePresence>
+          {showScanner && (
+            <BarcodeScanner 
+              onScan={handleBarcodeScan}
+              onClose={() => setShowScanner(false)}
+            />
+          )}
+        </AnimatePresence>
 
         <AnimatePresence mode="wait">
           <motion.div
@@ -553,11 +603,11 @@ export default function App() {
             )}
 
             {activeTab === 'pos' && (
-              <POS onOrderComplete={loadInitialData} currentUser={currentUser} />
+              <POS onOrderComplete={loadInitialData} currentUser={currentUser} lastScannedCode={lastScannedCode} />
             )}
 
             {activeTab === 'inventory' && (
-              <InventoryInsights onDataUpdate={loadInitialData} currentUser={currentUser} />
+              <InventoryInsights onDataUpdate={loadInitialData} currentUser={currentUser} lastScannedCode={lastScannedCode} />
             )}
 
             {activeTab === 'procurement' && (

@@ -24,9 +24,10 @@ import { cn } from '../lib/utils';
 interface InventoryInsightsProps {
   onDataUpdate?: () => void;
   currentUser: UserType | null;
+  lastScannedCode: string | null;
 }
 
-export const InventoryInsights: React.FC<InventoryInsightsProps> = ({ onDataUpdate, currentUser }) => {
+export const InventoryInsights: React.FC<InventoryInsightsProps> = ({ onDataUpdate, currentUser, lastScannedCode }) => {
   const [data, setData] = useState<InventoryInsightsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -62,6 +63,12 @@ export const InventoryInsights: React.FC<InventoryInsightsProps> = ({ onDataUpda
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (lastScannedCode) {
+      setSearchTerm(lastScannedCode);
+    }
+  }, [lastScannedCode]);
 
   const handleStockEntrySubmit = async (e: React.FormEvent) => {
     e.preventDefault();

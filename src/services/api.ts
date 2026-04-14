@@ -4,6 +4,11 @@ import {
   TopPerformanceData, StockEntry, Order, Customer, PaymentRecord,
   Role, User, AuditLog, ModuleName, ActionType, Branch, Supplier, PurchaseOrder
 } from "../types";
+import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
+import { 
+  collection, doc, getDoc, getDocs, setDoc, updateDoc, addDoc, 
+  query, where, orderBy, limit, onSnapshot, Timestamp 
+} from "firebase/firestore";
 
 // Internal mock state to persist changes during session
 let mockCustomers: Customer[] = [
@@ -391,31 +396,30 @@ export const fetchSalesAnalyticsData = async (): Promise<SalesAnalyticsData> => 
 };
 
 export const fetchInventoryInsightsData = async (): Promise<InventoryInsightsData> => {
-  await new Promise((resolve) => setTimeout(resolve, 800));
+  try {
+    const snapshot = await getDocs(collection(db, 'inventory'));
+    const allInventory = snapshot.docs.map(doc => doc.data() as InventoryItem);
+    
+    const lowStockItems = allInventory.filter(item => item.status === 'low-stock');
+    const outOfStockItems = allInventory.filter(item => item.status === 'out-of-stock');
+    const expiringSoonItems = allInventory.filter(item => item.status === 'expiring-soon');
 
-  const isAdmin = currentUser.roleId === 'role-admin';
-  const branchId = currentUser.branchId;
-  const filteredInventory = isAdmin ? mockInventory : mockInventory.filter(i => i.branchId === branchId);
+    const totalStockValue = allInventory.reduce((sum, item) => sum + (item.quantity * item.purchasePrice), 0);
+    const potentialRevenue = allInventory.reduce((sum, item) => sum + (item.quantity * item.sellingPrice), 0);
 
-  const lowStockItems = filteredInventory.filter(item => item.status === 'low-stock');
-  const outOfStockItems = filteredInventory.filter(item => item.status === 'out-of-stock');
-  const expiringSoonItems = filteredInventory.filter(item => item.status === 'expiring-soon');
-
-  const totalStockValue = filteredInventory.reduce((sum, item) => sum + (item.quantity * item.purchasePrice), 0);
-  const potentialRevenue = filteredInventory.reduce((sum, item) => sum + (item.quantity * item.sellingPrice), 0);
-
-  return {
-    totalStockValue,
-    potentialRevenue,
-    lowStockItems,
-    outOfStockItems,
-    expiringSoonItems,
-    allInventory: [...filteredInventory],
-    stockLogs: mockStockLogs.filter(log => {
-      const item = mockInventory.find(i => i.id === log.productId);
-      return isAdmin || (item && item.branchId === branchId);
-    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-  };
+    return {
+      totalStockValue,
+      potentialRevenue,
+      lowStockItems,
+      outOfStockItems,
+      expiringSoonItems,
+      allInventory,
+      stockLogs: mockStockLogs // Keep logs mock for now
+    };
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, 'inventory');
+    throw error;
+  }
 };
 
 export const addStockEntry = async (entry: Omit<StockEntry, 'id' | 'date' | 'actionType'>): Promise<StockEntry> => {
@@ -979,8 +983,9 @@ export const ROLE_TEMPLATES: Record<string, Partial<Role>> = {
 };
 
 export const fetchRoles = async (): Promise<Role[]> => {
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  return [...mockRoles];
+  // Roles can stay mock for now or be moved to Firestore
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  return mockRoles;
 };
 
 export const createRole = async (role: Omit<Role, 'id'>): Promise<Role> => {
@@ -1014,8 +1019,13 @@ export const deleteRole = async (id: string): Promise<void> => {
 };
 
 export const fetchUsers = async (): Promise<User[]> => {
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  return [...mockUsers];
+  try {
+    const snapshot = await getDocs(collection(db, 'users'));
+    return snapshot.docs.map(doc => doc.data() as User);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, 'users');
+    throw error;
+  }
 };
 
 export const createUser = async (user: Omit<User, 'id'>): Promise<User> => {
@@ -1065,7 +1075,17 @@ export const addAuditLog = async (action: string, module: ModuleName, details: s
 };
 
 export const getCurrentUser = async (): Promise<User> => {
-  await new Promise((resolve) => setTimeout(resolve, 200));
+  const firebaseUser = auth.currentUser;
+  if (firebaseUser) {
+    try {
+      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+      if (userDoc.exists()) {
+        return userDoc.data() as User;
+      }
+    } catch (error) {
+      console.error("Error fetching current user from Firestore:", error);
+    }
+  }
   return currentUser;
 };
 
