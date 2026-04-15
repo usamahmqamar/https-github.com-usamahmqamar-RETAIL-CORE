@@ -36,6 +36,7 @@ type DashboardSubTab = 'overview' | 'analytics' | 'profit-loss' | 'forecasting' 
 export default function App() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [dashboardSubTab, setDashboardSubTab] = useState<DashboardSubTab>('overview');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -62,6 +63,7 @@ export default function App() {
 
   const loadInitialData = async () => {
     setLoading(true);
+    setError(null);
     try {
       const [dashboardResult, userResult, usersResult, rolesResult] = await Promise.all([
         fetchDashboardData(),
@@ -73,8 +75,9 @@ export default function App() {
       setCurrentUser(userResult);
       setAllUsers(usersResult);
       setRoles(rolesResult);
-    } catch (error) {
-      console.error("Failed to fetch initial data:", error);
+    } catch (err) {
+      console.error("Failed to fetch initial data:", err);
+      setError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setLoading(false);
     }
@@ -142,6 +145,29 @@ export default function App() {
   const getRoleName = (roleId: string) => {
     return roles.find(r => r.id === roleId)?.name || 'Unknown';
   };
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-3xl shadow-xl border border-slate-200 p-8 text-center space-y-6">
+          <div className="w-16 h-16 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center mx-auto">
+            <AlertTriangle className="w-8 h-8" />
+          </div>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Failed to Load Dashboard</h2>
+          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-left">
+            <p className="text-xs font-mono text-slate-600 break-words">{error.message}</p>
+          </div>
+          <button 
+            onClick={loadInitialData}
+            className="btn-primary w-full flex items-center justify-center gap-2 py-3"
+          >
+            <RefreshCcw className="w-4 h-4" />
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading && !data) {
     return (
