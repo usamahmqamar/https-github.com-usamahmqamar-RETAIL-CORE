@@ -27,6 +27,7 @@ import { SupplierManagement } from './components/SupplierManagement';
 import { PurchaseOrderManagement } from './components/PurchaseOrderManagement';
 import { BranchManagement } from './components/BranchManagement';
 import { BarcodeScanner } from './components/BarcodeScanner';
+import { Login } from './components/Login';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 
@@ -46,16 +47,17 @@ export default function App() {
   const [showScanner, setShowScanner] = useState(false);
   const [lastScannedCode, setLastScannedCode] = useState<string | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setIsAuthReady(true);
       if (user) {
+        setIsAuthenticated(true);
         loadInitialData();
       } else {
-        // For demo, we still load if not authenticated, 
-        // but in production you'd show a login screen
-        loadInitialData();
+        setIsAuthenticated(false);
+        setLoading(false);
       }
     });
     return () => unsubscribe();
@@ -96,6 +98,14 @@ export default function App() {
       setActiveTab('dashboard');
     } catch (error) {
       console.error("Failed to switch user:", error);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await auth.signOut();
+    } catch (error) {
+      console.error("Sign out failed:", error);
     }
   };
 
@@ -169,15 +179,19 @@ export default function App() {
     );
   }
 
-  if (loading && !data) {
+  if (!isAuthReady || (loading && !data)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <RefreshCcw className="w-8 h-8 text-blue-500 animate-spin" />
-          <p className="text-gray-500 font-medium">Loading Dashboard...</p>
+          <p className="text-gray-500 font-medium">Loading RetailCore...</p>
         </div>
       </div>
     );
+  }
+
+  if (!isAuthenticated) {
+    return <Login onLoginSuccess={loadInitialData} />;
   }
 
   if (!data) return null;
@@ -361,7 +375,10 @@ export default function App() {
                       ))}
                     </div>
                     <div className="p-2 border-t border-slate-50">
-                      <button className="w-full flex items-center gap-2 p-2 text-rose-600 hover:bg-rose-50 rounded-xl transition-all text-sm font-bold">
+                      <button 
+                        onClick={handleSignOut}
+                        className="w-full flex items-center gap-2 p-2 text-rose-600 hover:bg-rose-50 rounded-xl transition-all text-sm font-bold"
+                      >
                         <LogOut className="w-4 h-4" />
                         Sign Out
                       </button>
