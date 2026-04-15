@@ -11,6 +11,12 @@ const PORT = process.env.PORT || 3000;
 
 const distPath = path.resolve(__dirname, 'dist');
 
+// Request logger
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
+
 // Health check
 app.get('/healthz', (req, res) => {
   res.status(200).send('OK');
@@ -35,7 +41,15 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`Serving files from ${distPath}`);
   if (fs.existsSync(distPath)) {
     console.log('Dist directory exists.');
-    console.log('Contents:', fs.readdirSync(distPath));
+    try {
+      const files = fs.readdirSync(distPath);
+      console.log('Dist contents:', files);
+      if (files.includes('assets')) {
+        console.log('Assets directory contents:', fs.readdirSync(path.join(distPath, 'assets')));
+      }
+    } catch (err) {
+      console.error('Error reading dist directory:', err);
+    }
   } else {
     console.error('Dist directory DOES NOT exist!');
   }
