@@ -2,7 +2,8 @@ import {
   DashboardData, SalesAnalyticsData, InventoryInsightsData, InventoryItem, 
   ProfitLossData, ExpenseData, Expense, DashboardAlert, ForecastData, 
   TopPerformanceData, StockEntry, Order, Customer, PaymentRecord,
-  Role, User, AuditLog, ModuleName, ActionType, Branch, Supplier, PurchaseOrder
+  Role, User, AuditLog, ModuleName, ActionType, Branch, Supplier, PurchaseOrder,
+  VendorBill, VendorPayment, VendorManagementData
 } from "../types";
 import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
 import { 
@@ -63,6 +64,7 @@ let mockRoles: Role[] = [
       { module: 'forecasting', actions: ['view'] },
       { module: 'performance', actions: ['view'] },
       { module: 'rbac', actions: ['view', 'create', 'edit', 'delete'] },
+      { module: 'suppliers', actions: ['view', 'create', 'edit', 'delete'] },
     ]
   },
   {
@@ -81,6 +83,7 @@ let mockRoles: Role[] = [
       { module: 'reports', actions: ['view'] },
       { module: 'forecasting', actions: ['view'] },
       { module: 'performance', actions: ['view'] },
+      { module: 'suppliers', actions: ['view', 'create', 'edit'] },
     ]
   },
   {
@@ -109,8 +112,18 @@ let mockBranches: Branch[] = [
 ];
 
 let mockSuppliers: Supplier[] = [
-  { id: 's1', name: 'Global Tech Solutions', contactPerson: 'Alice Smith', phone: '555-2020', email: 'alice@globaltech.com', address: '789 Tech Park, Silicon Valley', gstNumber: 'GST123456789', paymentTerms: 'Net 30' },
-  { id: 's2', name: 'Office Essentials Ltd', contactPerson: 'Bob Johnson', phone: '555-3030', email: 'bob@officeessentials.com', address: '101 Stationery Way, City', gstNumber: 'GST987654321', paymentTerms: 'Net 15' }
+  { id: 's1', name: 'Global Tech Solutions', contactPerson: 'Alice Smith', phone: '555-2020', email: 'alice@globaltech.com', address: '789 Tech Park, Silicon Valley', gstNumber: 'GST123456789', paymentTerms: 'Net 30', totalOwed: 25000, totalPaid: 150000 },
+  { id: 's2', name: 'Office Essentials Ltd', contactPerson: 'Bob Johnson', phone: '555-3030', email: 'bob@officeessentials.com', address: '101 Stationery Way, City', gstNumber: 'GST987654321', paymentTerms: 'Net 15', totalOwed: 5400, totalPaid: 45000 }
+];
+
+let mockVendorBills: VendorBill[] = [
+  { id: 'bill-1', vendorId: 's1', vendorName: 'Global Tech Solutions', billNumber: 'INV-2026-001', date: '2026-04-01', dueDate: '2026-04-30', items: [{ description: 'Laptop Keyboards', quantity: 20, unitPrice: 500, total: 10000 }], totalAmount: 10000, paidAmount: 0, balance: 10000, status: 'UNPAID', branchId: 'b1' },
+  { id: 'bill-2', vendorId: 's1', vendorName: 'Global Tech Solutions', billNumber: 'INV-2026-005', date: '2026-04-10', dueDate: '2026-05-10', items: [{ description: 'Webcams 1080p', quantity: 15, unitPrice: 1000, total: 15000 }], totalAmount: 15000, paidAmount: 0, balance: 15000, status: 'UNPAID', branchId: 'b1' },
+  { id: 'bill-3', vendorId: 's2', vendorName: 'Office Essentials Ltd', billNumber: 'OE-10293', date: '2026-04-05', dueDate: '2026-04-20', items: [{ description: 'Printer Paper A4', quantity: 100, unitPrice: 250, total: 25000 }], totalAmount: 25000, paidAmount: 19600, balance: 5400, status: 'PARTIALLY_PAID', branchId: 'b1' }
+];
+
+let mockVendorPayments: VendorPayment[] = [
+  { id: 'vpay-1', billId: 'bill-3', vendorId: 's2', amount: 19600, date: '2026-04-15', paymentMethod: 'UPI', referenceNumber: 'TXN998877', note: 'Partial payment for paper stock' }
 ];
 
 let mockPurchaseOrders: PurchaseOrder[] = [];
@@ -423,32 +436,131 @@ export const fetchInventoryInsightsData = async (): Promise<InventoryInsightsDat
 };
 
 export const addStockEntry = async (entry: Omit<StockEntry, 'id' | 'date' | 'actionType'>): Promise<StockEntry> => {
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  
-  const newEntry: StockEntry = {
-    ...entry,
-    id: Math.random().toString(36).substr(2, 9),
-    date: new Date().toISOString(),
-    branchId: currentUser.branchId,
-    actionType: 'STOCK_IN'
-  };
+  try {
+    const newEntry: StockEntry = {
+      ...entry,
+      id: Math.random().toString(36).substr(2, 9),
+      date: new Date().toISOString(),
+      branchId: currentUser.branchId,
+      actionType: 'STOCK_IN'
+    };
 
-  mockStockLogs.push(newEntry);
+    // Update Firestore Inventory
+    if (entry.productId === 'new' || !entry.productId) {
+      // Create new product
+      const newProductId = `p${Math.random().toString(36).substr(2, 9)}`;
+      const newItem: InventoryItem = {
+        id: newProductId,
+        name: entry.productName,
+        sku: entry.barcode,
+        quantity: entry.quantityAdded,
+        threshold: 10,
+        purchasePrice: entry.purchasePrice,
+        sellingPrice: entry.sellingPrice,
+        gstPercent: entry.gstPercent,
+        expiryDate: entry.expiryDate,
+        branchId: currentUser.branchId,
+        status: 'in-stock',
+        images: entry.images || []
+      };
+      
+      const updatedItem = updateItemStatus(newItem);
+      await setDoc(doc(db, 'inventory', newProductId), updatedItem);
+      newEntry.productId = newProductId;
+    } else {
+      // Update existing item
+      const itemRef = doc(db, 'inventory', entry.productId);
+      const itemSnap = await getDoc(itemRef);
+      if (itemSnap.exists()) {
+        const currentItem = itemSnap.data() as InventoryItem;
+        const updatedItem = updateItemStatus({
+          ...currentItem,
+          quantity: currentItem.quantity + entry.quantityAdded,
+          purchasePrice: entry.purchasePrice,
+          sellingPrice: entry.sellingPrice,
+          gstPercent: entry.gstPercent,
+          images: entry.images ? [...(entry.images)] : (currentItem.images || [])
+        });
+        // Limit to 4 images
+        if (updatedItem.images) {
+          updatedItem.images = updatedItem.images.slice(0, 4);
+        }
+        await setDoc(itemRef, updatedItem);
+      }
+    }
 
-  // Update inventory
-  const itemIndex = mockInventory.findIndex(i => i.id === entry.productId);
-  if (itemIndex !== -1) {
-    const item = mockInventory[itemIndex];
-    mockInventory[itemIndex] = updateItemStatus({
-      ...item,
-      quantity: item.quantity + entry.quantityAdded,
-      purchasePrice: entry.purchasePrice,
-      sellingPrice: entry.sellingPrice,
-      gstPercent: entry.gstPercent
-    });
+    // Record log in Firestore
+    const logId = Math.random().toString(36).substr(2, 9);
+    const logEntry: StockEntry = {
+      id: logId,
+      productId: newEntry.productId,
+      productName: newEntry.productName,
+      barcode: newEntry.barcode,
+      purchasePrice: newEntry.purchasePrice,
+      sellingPrice: newEntry.sellingPrice,
+      gstPercent: newEntry.gstPercent,
+      quantityAdded: entry.quantityAdded,
+      date: newEntry.date,
+      branchId: newEntry.branchId,
+      actionType: 'STOCK_IN',
+      images: entry.images
+    };
+    await setDoc(doc(db, 'stock_logs', logId), logEntry);
+
+    mockStockLogs.push(newEntry);
+    await addAuditLog('Stock Entry', 'inventory', `Added ${entry.quantityAdded} units to ${entry.productName}`);
+    return newEntry;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, 'inventory');
+    throw error;
   }
+};
 
-  return newEntry;
+export const bulkImportInventory = async (items: Omit<InventoryItem, 'id' | 'status'>[]): Promise<void> => {
+  try {
+    await Promise.all(items.map(async (item) => {
+      const id = `p${Math.random().toString(36).substr(2, 9)}`;
+      const newItem = updateItemStatus({
+        ...item,
+        id,
+        status: 'in-stock',
+        images: item.images || []
+      });
+      await setDoc(doc(db, 'inventory', id), newItem);
+    }));
+    await addAuditLog('Bulk Import', 'inventory', `Imported ${items.length} items`);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, 'inventory');
+    throw error;
+  }
+};
+
+export const updateInventoryItem = async (item: InventoryItem): Promise<InventoryItem> => {
+  try {
+    const updatedItem = updateItemStatus(item);
+    await setDoc(doc(db, 'inventory', item.id), updatedItem);
+    await addAuditLog('Update Product', 'inventory', `Updated productDetails for ${item.name}`);
+    return updatedItem;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, 'inventory');
+    throw error;
+  }
+};
+
+export const fetchProductStockLogs = async (productId: string): Promise<StockEntry[]> => {
+  try {
+    const q = query(
+      collection(db, 'stock_logs'),
+      where('productId', '==', productId),
+      orderBy('date', 'desc')
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => doc.data() as StockEntry);
+  } catch (error) {
+    // If collection doesn't exist yet, return mock filtered or empty
+    console.warn("Firestore logs not available yet, using mock", error);
+    return mockStockLogs.filter(log => log.productId === productId).sort((a, b) => b.date.localeCompare(a.date));
+  }
 };
 
 export const recordStockAdjustment = async (
@@ -456,36 +568,45 @@ export const recordStockAdjustment = async (
   quantity: number, 
   type: 'RETURN' | 'LOSS_DAMAGED' | 'LOSS_EXPIRED'
 ): Promise<StockEntry> => {
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  
-  const itemIndex = mockInventory.findIndex(i => i.id === productId);
-  if (itemIndex === -1) throw new Error('Product not found');
-  
-  const item = mockInventory[itemIndex];
-  
-  const newEntry: StockEntry = {
-    id: Math.random().toString(36).substr(2, 9),
-    productId: item.id,
-    productName: item.name,
-    barcode: item.sku,
-    purchasePrice: item.purchasePrice,
-    sellingPrice: item.sellingPrice,
-    gstPercent: item.gstPercent,
-    quantityAdded: type === 'RETURN' ? quantity : -quantity,
-    date: new Date().toISOString(),
-    branchId: currentUser.branchId,
-    actionType: type
-  };
+  try {
+    const itemRef = doc(db, 'inventory', productId);
+    const itemSnap = await getDoc(itemRef);
+    if (!itemSnap.exists()) throw new Error('Product not found');
+    
+    const item = itemSnap.data() as InventoryItem;
+    
+    const newEntry: StockEntry = {
+      id: Math.random().toString(36).substr(2, 9),
+      productId: item.id,
+      productName: item.name,
+      barcode: item.sku,
+      purchasePrice: item.purchasePrice,
+      sellingPrice: item.sellingPrice,
+      gstPercent: item.gstPercent,
+      quantityAdded: type === 'RETURN' ? quantity : -quantity,
+      date: new Date().toISOString(),
+      branchId: currentUser.branchId,
+      actionType: type
+    };
 
-  mockStockLogs.push(newEntry);
+    // Update Product in Firestore
+    const updatedItem = updateItemStatus({
+      ...item,
+      quantity: item.quantity + newEntry.quantityAdded
+    });
+    await setDoc(itemRef, updatedItem);
 
-  // Update inventory
-  mockInventory[itemIndex] = updateItemStatus({
-    ...item,
-    quantity: item.quantity + newEntry.quantityAdded
-  });
+    // Record log in Firestore
+    await setDoc(doc(db, 'stock_logs', newEntry.id), newEntry);
+    
+    // Fallback for mock state
+    mockStockLogs.push(newEntry);
 
-  return newEntry;
+    return newEntry;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, 'inventory');
+    throw error;
+  }
 };
 
 export const createOrder = async (order: Omit<Order, 'id' | 'date'>): Promise<Order> => {
@@ -1176,7 +1297,12 @@ export const fetchInventory = async (): Promise<InventoryItem[]> => {
   return isAdmin ? [...mockInventory] : mockInventory.filter(i => i.branchId === branchId);
 };
 
-export const hasPermission = (user: User, module: ModuleName, action: ActionType): boolean => {
+export const hasPermission = (user: User | null | undefined, module: ModuleName, action: ActionType): boolean => {
+  if (!user) return false;
+  
+  // Admin always has all permissions
+  if (user.roleId === 'role-admin' || user.id === 'u1') return true;
+  
   const role = mockRoles.find(r => r.id === user.roleId);
   if (!role) return false;
   
@@ -1184,4 +1310,74 @@ export const hasPermission = (user: User, module: ModuleName, action: ActionType
   if (!permission) return false;
   
   return permission.actions.includes(action);
+};
+
+export const fetchVendorManagementData = async (): Promise<VendorManagementData> => {
+  await new Promise((resolve) => setTimeout(resolve, 800));
+  const totalOwed = mockSuppliers.reduce((sum, s) => sum + s.totalOwed, 0);
+  const totalOverdue = mockVendorBills
+    .filter(b => b.status !== 'PAID' && new Date(b.dueDate) < new Date())
+    .reduce((sum, b) => sum + b.balance, 0);
+
+  return {
+    vendors: [...mockSuppliers],
+    bills: [...mockVendorBills].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    totalOwed,
+    totalOverdue
+  };
+};
+
+export const createVendorBill = async (bill: Omit<VendorBill, 'id' | 'balance' | 'paidAmount' | 'status'>): Promise<VendorBill> => {
+  await new Promise((resolve) => setTimeout(resolve, 600));
+  const newBill: VendorBill = {
+    ...bill,
+    id: `bill-${Math.random().toString(36).substr(2, 9)}`,
+    paidAmount: 0,
+    balance: bill.totalAmount,
+    status: 'UNPAID'
+  };
+  mockVendorBills.push(newBill);
+  
+  // Update vendor balance
+  const vendorIndex = mockSuppliers.findIndex(s => s.id === bill.vendorId);
+  if (vendorIndex !== -1) {
+    mockSuppliers[vendorIndex].totalOwed += bill.totalAmount;
+  }
+  
+  await addAuditLog('Created Vendor Bill', 'suppliers', `Created bill ${newBill.billNumber} for ${newBill.vendorName}`);
+  return newBill;
+};
+
+export const recordVendorPayment = async (payment: Omit<VendorPayment, 'id' | 'date'>): Promise<VendorPayment> => {
+  await new Promise((resolve) => setTimeout(resolve, 800));
+  const newPayment: VendorPayment = {
+    ...payment,
+    id: `vpay-${Math.random().toString(36).substr(2, 9)}`,
+    date: new Date().toISOString()
+  };
+  mockVendorPayments.push(newPayment);
+  
+  // Update bill status
+  const billIndex = mockVendorBills.findIndex(b => b.id === payment.billId);
+  if (billIndex !== -1) {
+    const bill = mockVendorBills[billIndex];
+    bill.paidAmount += payment.amount;
+    bill.balance -= payment.amount;
+    if (bill.balance <= 0) {
+      bill.status = 'PAID';
+      bill.balance = 0;
+    } else {
+      bill.status = 'PARTIALLY_PAID';
+    }
+  }
+
+  // Update vendor balance
+  const vendorIndex = mockSuppliers.findIndex(s => s.id === payment.vendorId);
+  if (vendorIndex !== -1) {
+    mockSuppliers[vendorIndex].totalOwed -= payment.amount;
+    mockSuppliers[vendorIndex].totalPaid += payment.amount;
+  }
+  
+  await addAuditLog('Recorded Vendor Payment', 'suppliers', `Recorded payment of ₹${payment.amount} to ${newPayment.vendorId}`);
+  return newPayment;
 };

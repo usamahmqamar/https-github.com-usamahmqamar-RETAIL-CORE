@@ -376,7 +376,7 @@ export const POS: React.FC<POSProps> = ({ onOrderComplete, currentUser, lastScan
       </div>
 
       {/* Right Side: Sidebar (Inputs, Customer, Checkout) */}
-      <div className="w-full lg:w-[400px] flex flex-col gap-6 overflow-y-auto no-scrollbar pb-10">
+      <div className="w-full lg:w-[400px] flex flex-col gap-6 overflow-y-auto pb-10">
         {/* Product Input Section */}
         <div className="glass-card p-6 space-y-4">
           <div className="flex items-center justify-between">
@@ -439,7 +439,7 @@ export const POS: React.FC<POSProps> = ({ onOrderComplete, currentUser, lastScan
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
-                    className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-slate-100 z-50 max-h-60 overflow-y-auto no-scrollbar"
+                    className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-slate-100 z-50 max-h-60 overflow-y-auto"
                   >
                     {filteredProducts.length > 0 ? (
                       filteredProducts.map(product => (
@@ -606,7 +606,7 @@ export const POS: React.FC<POSProps> = ({ onOrderComplete, currentUser, lastScan
         </div>
 
         {/* Checkout Section */}
-        <div className="glass-card flex flex-col overflow-hidden">
+        <div className="glass-card flex flex-col">
           <div className="p-6 bg-slate-50/50 border-b border-slate-100 space-y-4">
             <div className="space-y-3">
               <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest">
@@ -646,7 +646,7 @@ export const POS: React.FC<POSProps> = ({ onOrderComplete, currentUser, lastScan
             {/* Payment Input */}
             <div className="space-y-3 pt-2">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-400 uppercase">Payment Received</label>
+                <label className="text-xs font-bold text-slate-400 uppercase">Amount Received</label>
                 <button 
                   onClick={() => setIsPartialPayment(!isPartialPayment)}
                   className={cn(
@@ -654,7 +654,7 @@ export const POS: React.FC<POSProps> = ({ onOrderComplete, currentUser, lastScan
                     isPartialPayment ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-500"
                   )}
                 >
-                  {isPartialPayment ? "Partial Mode" : "Full Payment"}
+                  {isPartialPayment ? "Credit Sale" : "Full Payment"}
                 </button>
               </div>
               
@@ -738,14 +738,19 @@ export const POS: React.FC<POSProps> = ({ onOrderComplete, currentUser, lastScan
             <button 
               onClick={handleCheckout}
               disabled={cart.length === 0 || isCheckingOut || !hasPermission(currentUser, 'pos', 'create')}
-              className="btn-primary w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+              className="btn-primary w-full py-4 rounded-2xl font-bold flex flex-col items-center justify-center gap-1 disabled:opacity-50"
             >
               {isCheckingOut ? (
                 <RefreshCcw className="w-5 h-5 animate-spin" />
               ) : (
                 <>
-                  {!hasPermission(currentUser, 'pos', 'create') ? 'No Permission to Bill' : 'Complete Transaction'}
-                  <ArrowRight className="w-5 h-5" />
+                  <span className="text-[10px] uppercase opacity-60 tracking-widest">
+                    {!hasPermission(currentUser, 'pos', 'create') ? 'No Permission' : 'Click to Pay'}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">PAY {formatCurrency(totalAmount)}</span>
+                    <ArrowRight className="w-5 h-5" />
+                  </div>
                 </>
               )}
             </button>

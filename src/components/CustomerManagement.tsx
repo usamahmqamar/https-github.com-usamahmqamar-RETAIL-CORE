@@ -126,7 +126,7 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ currentU
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto no-scrollbar">
+        <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="p-8 text-center text-gray-400">Loading customers...</div>
           ) : filteredCustomers.length === 0 ? (
@@ -227,7 +227,7 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ currentU
             </div>
 
             {/* Content Tabs (Order History) */}
-            <div className="flex-1 overflow-y-auto p-8 no-scrollbar">
+            <div className="flex-1 overflow-y-auto p-8">
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">

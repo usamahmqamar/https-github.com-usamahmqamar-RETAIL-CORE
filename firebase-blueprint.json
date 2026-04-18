@@ -76,6 +76,38 @@
         "status": { "type": "string", "enum": ["paid", "pending", "upcoming"] }
       },
       "required": ["id", "title", "amount", "category", "date", "branchId", "status"]
+    },
+    "VendorBill": {
+      "title": "Vendor Bill",
+      "description": "Invoice received from a vendor",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "vendorId": { "type": "string" },
+        "billNumber": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "dueDate": { "type": "string", "format": "date" },
+        "totalAmount": { "type": "number" },
+        "paidAmount": { "type": "number" },
+        "balance": { "type": "number" },
+        "status": { "type": "string", "enum": ["PAID", "PARTIALLY_PAID", "UNPAID"] },
+        "branchId": { "type": "string" }
+      },
+      "required": ["id", "vendorId", "billNumber", "date", "dueDate", "totalAmount", "paidAmount", "balance", "status", "branchId"]
+    },
+    "VendorPayment": {
+      "title": "Vendor Payment",
+      "description": "Payment made to a vendor",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "billId": { "type": "string" },
+        "vendorId": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" },
+        "paymentMethod": { "type": "string", "enum": ["CASH", "BANK_TRANSFER", "CHEQUE", "UPI"] }
+      },
+      "required": ["id", "billId", "vendorId", "amount", "date", "paymentMethod"]
     }
   },
   "firestore": {
@@ -98,6 +130,14 @@
     "/expenses/{expenseId}": {
       "schema": "Expense",
       "description": "Business expenses"
+    },
+    "/vendor_bills/{billId}": {
+      "schema": "VendorBill",
+      "description": "Invoices from vendors"
+    },
+    "/vendor_payments/{paymentId}": {
+      "schema": "VendorPayment",
+      "description": "Payments to vendors"
     }
   }
 }

@@ -141,7 +141,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ onNaviga
               </div>
             </div>
 
-            <div className="max-h-[400px] overflow-y-auto no-scrollbar">
+            <div className="max-h-[400px] overflow-y-auto">
               {loading ? (
                 <div className="p-8 text-center">
                   <Clock className="w-6 h-6 text-blue-500 animate-spin mx-auto mb-2" />

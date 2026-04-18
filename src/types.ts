@@ -52,6 +52,7 @@ export interface InventoryItem {
   expiryDate?: string;
   status: 'in-stock' | 'low-stock' | 'out-of-stock' | 'expiring-soon';
   branchId: string;
+  images?: string[];
 }
 
 export interface PaymentRecord {
@@ -121,6 +122,7 @@ export interface StockEntry {
   date: string;
   branchId: string;
   actionType: 'STOCK_IN' | 'SALE' | 'RETURN' | 'LOSS_DAMAGED' | 'LOSS_EXPIRED';
+  images?: string[];
 }
 
 export interface InventoryInsightsData {
@@ -282,6 +284,47 @@ export interface Supplier {
   address: string;
   gstNumber?: string;
   paymentTerms?: string;
+  totalOwed: number;
+  totalPaid: number;
+}
+
+export interface VendorBill {
+  id: string;
+  vendorId: string;
+  vendorName: string;
+  billNumber: string;
+  date: string;
+  dueDate: string;
+  items: {
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+  }[];
+  totalAmount: number;
+  paidAmount: number;
+  balance: number;
+  status: 'PAID' | 'PARTIALLY_PAID' | 'UNPAID';
+  branchId: string;
+  fileUrl?: string;
+}
+
+export interface VendorPayment {
+  id: string;
+  billId: string;
+  vendorId: string;
+  amount: number;
+  date: string;
+  paymentMethod: 'CASH' | 'BANK_TRANSFER' | 'CHEQUE' | 'UPI';
+  referenceNumber?: string;
+  note?: string;
+}
+
+export interface VendorManagementData {
+  vendors: Supplier[];
+  bills: VendorBill[];
+  totalOwed: number;
+  totalOverdue: number;
 }
 
 export interface PurchaseOrderItem {

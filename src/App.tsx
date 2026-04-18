@@ -26,12 +26,13 @@ import { AuditLogViewer } from './components/AuditLogViewer';
 import { SupplierManagement } from './components/SupplierManagement';
 import { PurchaseOrderManagement } from './components/PurchaseOrderManagement';
 import { BranchManagement } from './components/BranchManagement';
+import { VendorManagement } from './components/VendorManagement';
 import { BarcodeScanner } from './components/BarcodeScanner';
 import { Login } from './components/Login';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 
-type Tab = 'dashboard' | 'inventory' | 'expenses' | 'pos' | 'customers' | 'suppliers' | 'procurement';
+type Tab = 'dashboard' | 'inventory' | 'expenses' | 'pos' | 'customers' | 'vendors' | 'procurement';
 type DashboardSubTab = 'overview' | 'analytics' | 'profit-loss' | 'forecasting' | 'performance' | 'users' | 'rbac' | 'audit' | 'branches';
 
 export default function App() {
@@ -214,7 +215,7 @@ export default function App() {
             </div>
           </div>
           
-          <div className="flex items-center gap-1 bg-white p-1 rounded-2xl border border-slate-200 overflow-x-auto max-w-full scrollbar-none shadow-sm">
+          <div className="flex items-center gap-1 bg-white p-1 rounded-2xl border border-slate-200 overflow-x-auto max-w-full shadow-sm">
             {canView('dashboard') && (
               <button 
                 onClick={() => setActiveTab('dashboard')}
@@ -295,14 +296,14 @@ export default function App() {
 
             {canView('suppliers') && (
               <button 
-                onClick={() => setActiveTab('suppliers')}
+                onClick={() => setActiveTab('vendors')}
                 className={cn(
                   "nav-tab",
-                  activeTab === 'suppliers' && "nav-tab-active"
+                  activeTab === 'vendors' && "nav-tab-active"
                 )}
               >
                 <Truck className="w-4 h-4" />
-                Suppliers
+                Vendors
               </button>
             )}
           </div>
@@ -419,7 +420,7 @@ export default function App() {
             {activeTab === 'dashboard' && (
               <div className="space-y-8">
                 {/* Dashboard Sub-navigation */}
-                <div className="flex items-center gap-1 bg-white p-1 rounded-2xl border border-slate-200 overflow-x-auto max-w-full scrollbar-none mb-8 shadow-sm">
+                <div className="flex items-center gap-1 bg-white p-1 rounded-2xl border border-slate-200 overflow-x-auto max-w-full mb-8 shadow-sm">
                   <button 
                     onClick={() => setDashboardSubTab('overview')}
                     className={cn(
@@ -665,8 +666,8 @@ export default function App() {
               <ExpenseTracker currentUser={currentUser} />
             )}
 
-            {activeTab === 'suppliers' && (
-              <SupplierManagement currentUser={currentUser} />
+            {activeTab === 'vendors' && (
+              <VendorManagement currentUser={currentUser} onDataUpdate={loadInitialData} />
             )}
           </motion.div>
         </AnimatePresence>
