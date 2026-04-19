@@ -119,9 +119,15 @@ export default function App() {
   const handleSignOut = async () => {
     try {
       await auth.signOut();
+      setIsAuthenticated(false);
     } catch (error) {
       console.error("Sign out failed:", error);
     }
+  };
+
+  const handleTestingBypass = () => {
+    setIsAuthenticated(true);
+    loadInitialData();
   };
 
   const handleBarcodeScan = (code: string) => {
@@ -206,7 +212,7 @@ export default function App() {
   }
 
   if (!isAuthenticated) {
-    return <Login onLoginSuccess={loadInitialData} />;
+    return <Login onLoginSuccess={handleTestingBypass} />;
   }
 
   if (viewMode === 'storefront') {
