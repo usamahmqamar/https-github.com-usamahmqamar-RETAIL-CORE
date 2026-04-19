@@ -7,7 +7,7 @@ service cloud.firestore {
     }
 
     // ===============================================================
-    // Helper Functions
+    // Helper Functions (Pillar 3)
     // ===============================================================
     
     function isSignedIn() {
@@ -44,7 +44,7 @@ service cloud.firestore {
     }
 
     // ===============================================================
-    // Validation Blueprints
+    // Validation Blueprints (Pillar 2)
     // ===============================================================
 
     function isValidUser(data) {
@@ -89,19 +89,20 @@ service cloud.firestore {
     }
 
     match /inventory/{itemId} {
-      allow read: if true; // Storefront needs to see products
+      allow read: if isSignedIn();
       allow write: if isEmailVerified() && isAdmin() && isValidInventoryItem(incoming());
     }
 
     match /orders/{orderId} {
-      allow list: if isSignedIn() && (isAdmin() || resource.data.customer.phone != null);
-      allow get: if true; // Needed for public tracking
-      allow create: if true; // Public ordering
+      // Secure list query (Pillar 8)
+      allow list: if isSignedIn() && (isAdmin() || resource.data.customer.phone != null); // Allow if admin or specific customer
+      allow get: if isSignedIn();
+      allow create: if true; // Storefront creates orders (can be guest)
       allow update: if isEmailVerified() && isAdmin() && isValidOrder(incoming());
     }
 
     match /promo_codes/{promoId} {
-      allow read: if true; // Public coupon validation
+      allow read: if true; // Everyone can read for validation
       allow create: if isEmailVerified() && isAdmin() && isValidPromoCode(incoming());
       allow update: if isEmailVerified() && isAdmin() && isValidPromoCode(incoming());
       allow delete: if isEmailVerified() && isAdmin();
@@ -125,21 +126,6 @@ service cloud.firestore {
     match /vendor_payments/{paymentId} {
       allow read: if isSignedIn();
       allow write: if isEmailVerified() && isAdmin();
-    }
-
-    match /suppliers/{supplierId} {
-      allow read: if isSignedIn();
-      allow write: if isEmailVerified() && isAdmin();
-    }
-
-    match /purchase_orders/{poId} {
-      allow read: if isSignedIn();
-      allow write: if isEmailVerified() && isAdmin();
-    }
-
-    match /stock_logs/{logId} {
-       allow read: if isSignedIn() && isAdmin();
-       allow create: if isEmailVerified() && isAdmin();
     }
   }
 }

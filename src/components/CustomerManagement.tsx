@@ -330,9 +330,9 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ currentU
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
+              className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-blue-50">
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-blue-50 shrink-0">
                 <div className="flex items-center gap-2">
                   <IndianRupee className="w-6 h-6 text-blue-600" />
                   <h3 className="text-xl font-bold text-blue-900">Record Payment</h3>
@@ -345,7 +345,7 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ currentU
                 </button>
               </div>
 
-              <div className="p-8 space-y-6">
+              <div className="p-8 space-y-6 overflow-y-auto flex-1">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-400 uppercase">Amount to Record</label>
                   <div className="relative">
@@ -394,21 +394,21 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ currentU
                     </button>
                   </div>
                 </div>
+              </div>
 
-                <div className="pt-4 flex gap-3">
-                  <button 
-                    onClick={() => setIsRecordingPayment(false)}
-                    className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-bold hover:bg-gray-200 transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    onClick={handleRecordPayment}
-                    className="flex-2 py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
-                  >
-                    Confirm Payment
-                  </button>
-                </div>
+              <div className="p-6 border-t border-gray-100 bg-gray-50 shrink-0 flex gap-3">
+                <button 
+                  onClick={() => setIsRecordingPayment(false)}
+                  className="flex-1 py-4 bg-white border border-gray-200 text-gray-500 rounded-2xl font-bold hover:bg-gray-50 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleRecordPayment}
+                  className="flex-2 py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
+                >
+                  Confirm Payment
+                </button>
               </div>
             </motion.div>
           </div>
@@ -423,9 +423,9 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ currentU
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
+              className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-rose-50">
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-rose-50 shrink-0">
                 <div className="flex items-center gap-2">
                   <RotateCcw className="w-6 h-6 text-rose-600" />
                   <h3 className="text-xl font-bold text-rose-900">Confirm Refund</h3>
@@ -438,7 +438,7 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ currentU
                 </button>
               </div>
 
-              <div className="p-8 space-y-6">
+              <div className="p-8 space-y-6 overflow-y-auto flex-1">
                 <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl flex gap-3">
                   <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
                   <div className="text-sm text-amber-800">
@@ -453,22 +453,22 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({ currentU
                 </div>
 
                 <p className="text-gray-600">Are you sure you want to refund order <span className="font-bold text-gray-900">{orderToRefund}</span>?</p>
+              </div>
 
-                <div className="pt-4 flex gap-3">
-                  <button 
-                    onClick={() => setOrderToRefund(null)}
-                    className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-bold hover:bg-gray-200 transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    onClick={handleRefundOrder}
-                    disabled={isRefunding}
-                    className="flex-2 py-4 bg-rose-600 text-white rounded-2xl font-bold hover:bg-rose-700 transition-all shadow-lg shadow-rose-100 disabled:opacity-50"
-                  >
-                    {isRefunding ? 'Processing...' : 'Confirm Refund & Return Stock'}
-                  </button>
-                </div>
+              <div className="p-6 border-t border-gray-100 bg-gray-50 shrink-0 flex gap-3">
+                <button 
+                  onClick={() => setOrderToRefund(null)}
+                  className="flex-1 py-4 bg-white border border-gray-200 text-gray-500 rounded-2xl font-bold hover:bg-gray-50 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleRefundOrder}
+                  disabled={isRefunding}
+                  className="flex-2 py-4 bg-rose-600 text-white rounded-2xl font-bold hover:bg-rose-700 transition-all shadow-lg shadow-rose-100 disabled:opacity-50"
+                >
+                  {isRefunding ? 'Processing...' : 'Confirm Refund'}
+                </button>
               </div>
             </motion.div>
           </div>

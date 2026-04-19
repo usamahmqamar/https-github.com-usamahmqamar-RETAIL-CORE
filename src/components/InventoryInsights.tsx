@@ -32,9 +32,10 @@ import {
 import { GoogleGenAI, Type } from "@google/genai";
 import { 
   fetchInventoryInsightsData, addStockEntry, recordStockAdjustment, 
-  hasPermission, bulkImportInventory, updateInventoryItem, fetchProductStockLogs 
+  hasPermission, bulkImportInventory, updateInventoryItem, fetchProductStockLogs,
+  fetchSuppliers
 } from '../services/api';
-import { InventoryInsightsData, InventoryItem, StockEntry, User as UserType } from '../types';
+import { InventoryInsightsData, InventoryItem, StockEntry, User as UserType, Supplier } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 
@@ -56,11 +57,17 @@ export const InventoryInsights: React.FC<InventoryInsightsProps> = ({ onDataUpda
   const [isWaybillModalOpen, setIsWaybillModalOpen] = useState(false);
   const [isScanningWaybill, setIsScanningWaybill] = useState(false);
   const [scannedWaybillItems, setScannedWaybillItems] = useState<any[]>([]);
+  const [scannedBillInfo, setScannedBillInfo] = useState({
+    billNumber: '',
+    supplierId: '',
+    dueDate: ''
+  });
   const [waybillImage, setWaybillImage] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [productLogs, setProductLogs] = useState<StockEntry[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bulkImportText, setBulkImportText] = useState('');
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -72,6 +79,9 @@ export const InventoryInsights: React.FC<InventoryInsightsProps> = ({ onDataUpda
     gstPercent: 18,
     quantityAdded: 0,
     expiryDate: '',
+    supplierId: '',
+    billNumber: '',
+    dueDate: '',
     images: [] as string[]
   });
 
@@ -83,8 +93,12 @@ export const InventoryInsights: React.FC<InventoryInsightsProps> = ({ onDataUpda
 
   const loadData = async () => {
     setLoading(true);
-    const result = await fetchInventoryInsightsData();
+    const [result, sups] = await Promise.all([
+      fetchInventoryInsightsData(),
+      fetchSuppliers()
+    ]);
     setData(result);
+    setSuppliers(sups);
     setLoading(false);
   };
 
@@ -112,7 +126,10 @@ export const InventoryInsights: React.FC<InventoryInsightsProps> = ({ onDataUpda
         quantityAdded: formData.quantityAdded,
         expiryDate: formData.expiryDate || undefined,
         branchId: '', // Will be defaulted by API
-        images: formData.images
+        images: formData.images,
+        supplierId: formData.supplierId || undefined,
+        billNumber: formData.billNumber || undefined,
+        dueDate: formData.dueDate || undefined
       });
       setIsStockEntryModalOpen(false);
       setFormData({
@@ -124,6 +141,9 @@ export const InventoryInsights: React.FC<InventoryInsightsProps> = ({ onDataUpda
         gstPercent: 18,
         quantityAdded: 0,
         expiryDate: '',
+        supplierId: '',
+        billNumber: '',
+        dueDate: '',
         images: []
       });
       await loadData(); // Refresh local data
@@ -317,7 +337,7 @@ export const InventoryInsights: React.FC<InventoryInsightsProps> = ({ onDataUpda
           {
             parts: [
               {
-                text: "Extract product details from this waybill/invoice. For each item, find: productName, sku, quantity, purchasePrice, sellingPrice (if not found, estimate based on cost + 20-30%), gstPercent (default 18 if not found), and expiryDate (if found, YYYY-MM-DD format). Return an array of these objects."
+                text: "Extract product details and bill metadata from this waybill/invoice. For products, find: productName, sku, quantity, purchasePrice, sellingPrice (if not found, estimate based on cost + 20-30%), gstPercent (default 18 if not found), and expiryDate (if found). For bill metadata, find: billNumber, supplierName (if found), and dueDate (if found). Return a JSON object with 'items' (array of products) and 'billInfo' (object with billNumber, supplierName, dueDate)."
               },
               {
                 inlineData: {
@@ -331,30 +351,55 @@ export const InventoryInsights: React.FC<InventoryInsightsProps> = ({ onDataUpda
         config: {
           responseMimeType: "application/json",
           responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                productName: { type: Type.STRING },
-                sku: { type: Type.STRING },
-                quantity: { type: Type.NUMBER },
-                purchasePrice: { type: Type.NUMBER },
-                sellingPrice: { type: Type.NUMBER },
-                gstPercent: { type: Type.NUMBER },
-                expiryDate: { type: Type.STRING }
+            type: Type.OBJECT,
+            properties: {
+              items: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    productName: { type: Type.STRING },
+                    sku: { type: Type.STRING },
+                    quantity: { type: Type.NUMBER },
+                    purchasePrice: { type: Type.NUMBER },
+                    sellingPrice: { type: Type.NUMBER },
+                    gstPercent: { type: Type.NUMBER },
+                    expiryDate: { type: Type.STRING }
+                  },
+                  required: ["productName", "quantity", "purchasePrice"]
+                }
               },
-              required: ["productName", "quantity", "purchasePrice"]
+              billInfo: {
+                type: Type.OBJECT,
+                properties: {
+                  billNumber: { type: Type.STRING },
+                  supplierName: { type: Type.STRING },
+                  dueDate: { type: Type.STRING }
+                }
+              }
             }
           }
         }
       });
 
-      const items = JSON.parse(response.text);
-      setScannedWaybillItems(items.map((item: any) => ({
+      const result = JSON.parse(response.text);
+      setScannedWaybillItems(result.items.map((item: any) => ({
         ...item,
-        id: Math.random().toString(36).substr(2, 9),
-        isConfirmed: false
+        id: Math.random().toString(36).substr(2, 9)
       })));
+      
+      // Attempt to match supplier
+      let supplierId = '';
+      if (result.billInfo?.supplierName) {
+        const match = suppliers.find(s => s.name.toLowerCase().includes(result.billInfo.supplierName.toLowerCase()));
+        if (match) supplierId = match.id;
+      }
+
+      setScannedBillInfo({
+        billNumber: result.billInfo?.billNumber || '',
+        supplierId: supplierId || '',
+        dueDate: result.billInfo?.dueDate || ''
+      });
     } catch (error) {
       console.error("Waybill processing failed:", error);
       alert("Failed to process waybill. Please try again or enter manually.");
@@ -388,12 +433,16 @@ export const InventoryInsights: React.FC<InventoryInsightsProps> = ({ onDataUpda
           quantityAdded: item.quantity,
           expiryDate: item.expiryDate || undefined,
           branchId: currentUser?.branchId || '',
-          images: []
+          images: [],
+          supplierId: scannedBillInfo.supplierId || undefined,
+          billNumber: scannedBillInfo.billNumber || undefined,
+          dueDate: scannedBillInfo.dueDate || undefined
         });
       }
       setIsWaybillModalOpen(false);
       setScannedWaybillItems([]);
       setWaybillImage(null);
+      setScannedBillInfo({ billNumber: '', supplierId: '', dueDate: '' });
       await loadData();
       if (onDataUpdate) onDataUpdate();
       alert(`Successfully imported ${scannedWaybillItems.length} items from waybill.`);
@@ -740,9 +789,9 @@ export const InventoryInsights: React.FC<InventoryInsightsProps> = ({ onDataUpda
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden"
+              className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
             >
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <div className="p-2 bg-blue-50 rounded-lg">
                     <Layers className="w-5 h-5 text-blue-600" />
@@ -757,8 +806,9 @@ export const InventoryInsights: React.FC<InventoryInsightsProps> = ({ onDataUpda
                 </button>
               </div>
 
-              <form onSubmit={handleStockEntrySubmit} className="p-6 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <form onSubmit={handleStockEntrySubmit} className="flex flex-col flex-1 overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Select Product</label>
                     <select 
@@ -811,6 +861,47 @@ export const InventoryInsights: React.FC<InventoryInsightsProps> = ({ onDataUpda
                       value={formData.barcode}
                       onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
                     />
+                  </div>
+
+                  {/* Vendor Link */}
+                  <div className="col-span-2 p-4 bg-blue-50/50 border border-blue-100 rounded-2xl space-y-4">
+                    <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest flex items-center gap-2">
+                       <IndianRupee className="w-3 h-3" /> Billing Integration (Optional)
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Select Supplier</label>
+                        <select 
+                          className="w-full p-2.5 bg-white border border-blue-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20"
+                          value={formData.supplierId}
+                          onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
+                        >
+                          <option value="">No Supplier (Stock Only)</option>
+                          {suppliers.map(s => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Bill / Waybill #</label>
+                        <input 
+                          type="text"
+                          placeholder="INV-XXXX"
+                          className="w-full p-2.5 bg-white border border-blue-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20"
+                          value={formData.billNumber}
+                          onChange={(e) => setFormData({ ...formData, billNumber: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Payment Due Date</label>
+                        <input 
+                          type="date"
+                          className="w-full p-2.5 bg-white border border-blue-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20"
+                          value={formData.dueDate}
+                          onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -928,9 +1019,10 @@ export const InventoryInsights: React.FC<InventoryInsightsProps> = ({ onDataUpda
                       </div>
                     ))}
                   </div>
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                <div className="flex items-center justify-between p-6 border-t border-gray-100 bg-gray-50 flex-shrink-0">
                   <div className="text-xs text-gray-400">
                     Total Entry Value: <span className="font-bold text-gray-900">{formatCurrency(formData.purchasePrice * formData.quantityAdded)}</span>
                   </div>
@@ -965,9 +1057,9 @@ export const InventoryInsights: React.FC<InventoryInsightsProps> = ({ onDataUpda
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
+              className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
             >
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-amber-50">
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-amber-50 flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <div className="p-2 bg-amber-100 rounded-lg">
                     <AlertTriangle className="w-5 h-5 text-amber-600" />
@@ -982,8 +1074,9 @@ export const InventoryInsights: React.FC<InventoryInsightsProps> = ({ onDataUpda
                 </button>
               </div>
 
-              <form onSubmit={handleAdjustmentSubmit} className="p-6 space-y-6">
-                <div className="space-y-4">
+              <form onSubmit={handleAdjustmentSubmit} className="flex flex-col flex-1 overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                  <div className="space-y-4">
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Select Product</label>
                     <select 
@@ -1038,9 +1131,10 @@ export const InventoryInsights: React.FC<InventoryInsightsProps> = ({ onDataUpda
                       onChange={(e) => setAdjustmentData({ ...adjustmentData, quantity: parseInt(e.target.value) || 0 })}
                     />
                   </div>
+                  </div>
                 </div>
 
-                <div className="flex gap-3 pt-4 border-t border-gray-100">
+                <div className="flex gap-3 p-6 border-t border-gray-100 bg-gray-50 flex-shrink-0">
                   <button 
                     type="button"
                     onClick={() => setIsAdjustmentModalOpen(false)}
@@ -1070,9 +1164,9 @@ export const InventoryInsights: React.FC<InventoryInsightsProps> = ({ onDataUpda
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden"
+              className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
             >
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-slate-50">
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-slate-50 flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <div className="p-2 bg-slate-900 rounded-lg">
                     <FileJson className="w-5 h-5 text-white" />
@@ -1087,7 +1181,7 @@ export const InventoryInsights: React.FC<InventoryInsightsProps> = ({ onDataUpda
                 </button>
               </div>
 
-              <div className="p-6 space-y-6">
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 <div className="bg-slate-900 rounded-2xl p-6 text-white space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -1134,27 +1228,27 @@ export const InventoryInsights: React.FC<InventoryInsightsProps> = ({ onDataUpda
                     onChange={(e) => setBulkImportText(e.target.value)}
                   />
                 </div>
+              </div>
 
-                <div className="flex gap-3">
-                  <button 
-                    onClick={() => setIsBulkImportModalOpen(false)}
-                    className="flex-1 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    onClick={handleBulkImport}
-                    disabled={isSubmitting || !bulkImportText.trim()}
-                    className="flex-[2] py-3 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {isSubmitting ? (
-                      <RefreshCcw className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="w-4 h-4" />
-                    )}
-                    {isSubmitting ? 'Importing...' : 'Confirm Bulk Import'}
-                  </button>
-                </div>
+              <div className="flex gap-3 p-6 border-t border-gray-100 bg-gray-50 flex-shrink-0">
+                <button 
+                  onClick={() => setIsBulkImportModalOpen(false)}
+                  className="flex-1 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleBulkImport}
+                  disabled={isSubmitting || !bulkImportText.trim()}
+                  className="flex-[2] py-3 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <RefreshCcw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4" />
+                  )}
+                  {isSubmitting ? 'Importing...' : 'Confirm Bulk Import'}
+                </button>
               </div>
             </motion.div>
           </div>
@@ -1169,9 +1263,9 @@ export const InventoryInsights: React.FC<InventoryInsightsProps> = ({ onDataUpda
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden"
+              className="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
             >
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <div className="p-2 bg-blue-100 rounded-lg">
                     <Edit2 className="w-5 h-5 text-blue-600" />
@@ -1186,8 +1280,9 @@ export const InventoryInsights: React.FC<InventoryInsightsProps> = ({ onDataUpda
                 </button>
               </div>
 
-              <form onSubmit={handleEditSubmit} className="p-6">
-                <div className="grid grid-cols-2 gap-4">
+              <form onSubmit={handleEditSubmit} className="flex flex-col flex-1 overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-6">
+                  <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Product Name</label>
                     <input 
@@ -1228,9 +1323,10 @@ export const InventoryInsights: React.FC<InventoryInsightsProps> = ({ onDataUpda
                       onChange={(e) => setFormData({ ...formData, sellingPrice: parseFloat(e.target.value) || 0 })}
                     />
                   </div>
+                  </div>
                 </div>
 
-                <div className="mt-6 flex gap-3">
+                <div className="p-6 border-t border-gray-100 bg-gray-50 flex-shrink-0 flex gap-3">
                   <button 
                     type="button"
                     onClick={() => setIsEditModalOpen(false)}
@@ -1474,6 +1570,40 @@ export const InventoryInsights: React.FC<InventoryInsightsProps> = ({ onDataUpda
                       </div>
                     ) : (
                       <div className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-emerald-50 border border-emerald-100 rounded-2xl">
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold text-emerald-800 uppercase tracking-widest">Supplier</label>
+                            <select 
+                              className="w-full p-2.5 bg-white border border-emerald-200 rounded-xl text-sm"
+                              value={scannedBillInfo.supplierId}
+                              onChange={(e) => setScannedBillInfo({ ...scannedBillInfo, supplierId: e.target.value })}
+                            >
+                              <option value="">Not Identified</option>
+                              {suppliers.map(s => (
+                                <option key={s.id} value={s.id}>{s.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold text-emerald-800 uppercase tracking-widest">Bill #</label>
+                            <input 
+                              type="text"
+                              className="w-full p-2.5 bg-white border border-emerald-200 rounded-xl text-sm"
+                              value={scannedBillInfo.billNumber}
+                              onChange={(e) => setScannedBillInfo({ ...scannedBillInfo, billNumber: e.target.value })}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold text-emerald-800 uppercase tracking-widest">Due Date</label>
+                            <input 
+                              type="date"
+                              className="w-full p-2.5 bg-white border border-emerald-200 rounded-xl text-sm"
+                              value={scannedBillInfo.dueDate}
+                              onChange={(e) => setScannedBillInfo({ ...scannedBillInfo, dueDate: e.target.value })}
+                            />
+                          </div>
+                        </div>
+
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <span className="bg-emerald-100 text-emerald-700 text-xs font-bold px-2 py-1 rounded-full border border-emerald-200">

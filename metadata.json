@@ -1,5 +1,5 @@
 {
-  "name": "Retail Core KPI Dashboard",
-  "description": "A high-level business performance dashboard for retail SaaS, featuring sales, profit, inventory, and expense tracking with integrated barcode scanning.",
+  "name": "RetailCore Omnichannel",
+  "description": "Premium Retail Management SaaS with integrated POS, Inventory, Vendor Management, and B2C Digital Storefront.",
   "requestFramePermissions": ["camera"]
 }

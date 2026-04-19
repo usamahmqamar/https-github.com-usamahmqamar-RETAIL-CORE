@@ -27,13 +27,18 @@ import { SupplierManagement } from './components/SupplierManagement';
 import { PurchaseOrderManagement } from './components/PurchaseOrderManagement';
 import { BranchManagement } from './components/BranchManagement';
 import { VendorManagement } from './components/VendorManagement';
+import Storefront from './components/Storefront';
+import OrderTracking from './components/OrderTracking';
+import StorefrontQR from './components/StorefrontQR';
+import FulfillmentDispatch from './components/FulfillmentDispatch';
+import MarketingManagement from './components/MarketingManagement';
 import { BarcodeScanner } from './components/BarcodeScanner';
 import { Login } from './components/Login';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 
 type Tab = 'dashboard' | 'inventory' | 'expenses' | 'pos' | 'customers' | 'vendors' | 'procurement';
-type DashboardSubTab = 'overview' | 'analytics' | 'profit-loss' | 'forecasting' | 'performance' | 'users' | 'rbac' | 'audit' | 'branches';
+type DashboardSubTab = 'overview' | 'analytics' | 'profit-loss' | 'forecasting' | 'performance' | 'users' | 'rbac' | 'audit' | 'branches' | 'storefront' | 'marketing' | 'fulfillment';
 
 export default function App() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -41,6 +46,15 @@ export default function App() {
   const [error, setError] = useState<Error | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [dashboardSubTab, setDashboardSubTab] = useState<DashboardSubTab>('overview');
+  const [viewMode, setViewMode] = useState<'staff' | 'storefront' | 'tracking'>('staff');
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('mode') === 'shop') {
+      setViewMode('storefront');
+    }
+  }, []);
+  const [trackedOrderId, setTrackedOrderId] = useState<string>('');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -195,6 +209,27 @@ export default function App() {
     return <Login onLoginSuccess={loadInitialData} />;
   }
 
+  if (viewMode === 'storefront') {
+    return (
+      <Storefront 
+        onOrderPlace={() => loadInitialData()} 
+        onGoToTracking={(orderId) => {
+          setTrackedOrderId(orderId);
+          setViewMode('tracking');
+        }} 
+      />
+    );
+  }
+
+  if (viewMode === 'tracking') {
+    return (
+      <OrderTracking 
+        initialOrderId={trackedOrderId} 
+        onBack={() => setViewMode('storefront')} 
+      />
+    );
+  }
+
   if (!data) return null;
 
   return (
@@ -211,7 +246,16 @@ export default function App() {
                 RetailCore
                 <span className="text-[10px] font-black bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full uppercase tracking-widest">v2.4</span>
               </h1>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">Performance Intelligence</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Performance Intelligence</p>
+                <div className="w-1 h-1 bg-slate-300 rounded-full" />
+                <button 
+                  onClick={() => setViewMode('storefront')}
+                  className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest hover:text-emerald-700 transition-colors flex items-center gap-1"
+                >
+                  <Globe className="w-3 h-3" /> Go to Storefront
+                </button>
+              </div>
             </div>
           </div>
           
@@ -419,90 +463,145 @@ export default function App() {
           >
             {activeTab === 'dashboard' && (
               <div className="space-y-8">
-                {/* Dashboard Sub-navigation */}
-                <div className="flex items-center gap-1 bg-white p-1 rounded-2xl border border-slate-200 overflow-x-auto max-w-full mb-8 shadow-sm">
-                  <button 
-                    onClick={() => setDashboardSubTab('overview')}
-                    className={cn(
-                      "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap",
-                      dashboardSubTab === 'overview' ? "bg-slate-900 text-white shadow-lg shadow-slate-200" : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
-                    )}
-                  >
-                    Overview
-                  </button>
-                  <button 
-                    onClick={() => setDashboardSubTab('analytics')}
-                    className={cn(
-                      "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap",
-                      dashboardSubTab === 'analytics' ? "bg-slate-900 text-white shadow-lg shadow-slate-200" : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
-                    )}
-                  >
-                    Analytics
-                  </button>
-                  <button 
-                    onClick={() => setDashboardSubTab('profit-loss')}
-                    className={cn(
-                      "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap",
-                      dashboardSubTab === 'profit-loss' ? "bg-slate-900 text-white shadow-lg shadow-slate-200" : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
-                    )}
-                  >
-                    Profit & Loss
-                  </button>
-                  <button 
-                    onClick={() => setDashboardSubTab('forecasting')}
-                    className={cn(
-                      "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap",
-                      dashboardSubTab === 'forecasting' ? "bg-slate-900 text-white shadow-lg shadow-slate-200" : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
-                    )}
-                  >
-                    Forecasting
-                  </button>
-                  <button 
-                    onClick={() => setDashboardSubTab('performance')}
-                    className={cn(
-                      "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap",
-                      dashboardSubTab === 'performance' ? "bg-slate-900 text-white shadow-lg shadow-slate-200" : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
-                    )}
-                  >
-                    Performance
-                  </button>
-                  <div className="w-px h-4 bg-slate-200 mx-2" />
-                  <button 
-                    onClick={() => setDashboardSubTab('users')}
-                    className={cn(
-                      "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap",
-                      dashboardSubTab === 'users' ? "bg-slate-900 text-white shadow-lg shadow-slate-200" : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
-                    )}
-                  >
-                    Users
-                  </button>
-                  <button 
-                    onClick={() => setDashboardSubTab('rbac')}
-                    className={cn(
-                      "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap",
-                      dashboardSubTab === 'rbac' ? "bg-slate-900 text-white shadow-lg shadow-slate-200" : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
-                    )}
-                  >
-                    Roles
-                  </button>
-                  <button 
-                    onClick={() => setDashboardSubTab('audit')}
-                    className={cn(
-                      "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap",
-                      dashboardSubTab === 'audit' ? "bg-slate-900 text-white shadow-lg shadow-slate-200" : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
-                    )}
-                  >
-                    Audit
-                  </button>
-                  <button 
-                    onClick={() => setDashboardSubTab('branches')}
-                    className={cn(
-                      "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap",
-                      dashboardSubTab === 'branches' ? "bg-slate-900 text-white shadow-lg shadow-slate-200" : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
-                    )}
-                  >
-                    Branches
-                  </button>
+                {/* Dashboard Sub-navigation Categorized */}
+                <div className="flex flex-wrap items-center gap-4 mb-8">
+                  {/* Category: Intelligence */}
+                  <div className="flex items-center gap-1 bg-white p-1 rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div className="px-3 py-1 border-r border-slate-100 flex items-center gap-1.5">
+                      <TrendingUp className="w-3 h-3 text-blue-500" />
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Intelligence</span>
+                    </div>
+                    <div className="flex items-center gap-0.5 px-0.5">
+                      <button 
+                        onClick={() => setDashboardSubTab('overview')}
+                        className={cn(
+                          "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
+                          dashboardSubTab === 'overview' ? "bg-slate-900 text-white shadow-lg shadow-slate-200" : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
+                        )}
+                      >
+                        Summary
+                      </button>
+                      <button 
+                        onClick={() => setDashboardSubTab('analytics')}
+                        className={cn(
+                          "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
+                          dashboardSubTab === 'analytics' ? "bg-slate-900 text-white shadow-lg shadow-slate-200" : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
+                        )}
+                      >
+                        Analytics
+                      </button>
+                      <button 
+                        onClick={() => setDashboardSubTab('profit-loss')}
+                        className={cn(
+                          "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
+                          dashboardSubTab === 'profit-loss' ? "bg-slate-900 text-white shadow-lg shadow-slate-200" : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
+                        )}
+                      >
+                        P&L
+                      </button>
+                      <button 
+                        onClick={() => setDashboardSubTab('forecasting')}
+                        className={cn(
+                          "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
+                          dashboardSubTab === 'forecasting' ? "bg-slate-900 text-white shadow-lg shadow-slate-200" : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
+                        )}
+                      >
+                        Forecast
+                      </button>
+                      <button 
+                        onClick={() => setDashboardSubTab('performance')}
+                        className={cn(
+                          "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
+                          dashboardSubTab === 'performance' ? "bg-slate-900 text-white shadow-lg shadow-slate-200" : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
+                        )}
+                      >
+                        Efficiency
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Category: Administration */}
+                  <div className="flex items-center gap-1 bg-white p-1 rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div className="px-3 py-1 border-r border-slate-100 flex items-center gap-1.5">
+                      <Shield className="w-3 h-3 text-amber-500" />
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Admin</span>
+                    </div>
+                    <div className="flex items-center gap-0.5 px-0.5">
+                      <button 
+                        onClick={() => setDashboardSubTab('users')}
+                        className={cn(
+                          "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
+                          dashboardSubTab === 'users' ? "bg-slate-900 text-white shadow-lg shadow-slate-200" : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
+                        )}
+                      >
+                        Users
+                      </button>
+                      <button 
+                        onClick={() => setDashboardSubTab('rbac')}
+                        className={cn(
+                          "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
+                          dashboardSubTab === 'rbac' ? "bg-slate-900 text-white shadow-lg shadow-slate-200" : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
+                        )}
+                      >
+                        Roles
+                      </button>
+                      <button 
+                        onClick={() => setDashboardSubTab('branches')}
+                        className={cn(
+                          "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
+                          dashboardSubTab === 'branches' ? "bg-slate-900 text-white shadow-lg shadow-slate-200" : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
+                        )}
+                      >
+                        Branches
+                      </button>
+                      <button 
+                        onClick={() => setDashboardSubTab('audit')}
+                        className={cn(
+                          "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
+                          dashboardSubTab === 'audit' ? "bg-slate-900 text-white shadow-lg shadow-slate-200" : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
+                        )}
+                      >
+                        Audit
+                      </button>
+                      <button 
+                        onClick={() => setDashboardSubTab('storefront')}
+                        className={cn(
+                          "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
+                          dashboardSubTab === 'storefront' ? "bg-emerald-600 text-white shadow-lg shadow-emerald-200" : "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                        )}
+                      >
+                        Share
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Category: Ecosystem */}
+                  <div className="flex items-center gap-1 bg-white p-1 rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div className="px-3 py-1 border-r border-slate-100 flex items-center gap-1.5">
+                      <RefreshCcw className="w-3 h-3 text-indigo-500" />
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Growth</span>
+                    </div>
+                    <div className="flex items-center gap-0.5 px-0.5">
+                      <button 
+                        onClick={() => setDashboardSubTab('fulfillment')}
+                        className={cn(
+                          "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
+                          dashboardSubTab === 'fulfillment' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200" : "text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                        )}
+                      >
+                        Delivery
+                      </button>
+                      <button 
+                        onClick={() => setDashboardSubTab('marketing')}
+                        className={cn(
+                          "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
+                          dashboardSubTab === 'marketing' ? "bg-orange-600 text-white shadow-lg shadow-orange-200" : "text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                        )}
+                      >
+                        Ads
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 {dashboardSubTab === 'overview' && (
@@ -643,6 +742,15 @@ export default function App() {
                 {dashboardSubTab === 'rbac' && <RoleManagement />}
                 {dashboardSubTab === 'audit' && <AuditLogViewer />}
                 {dashboardSubTab === 'branches' && <BranchManagement currentUser={currentUser} />}
+                {dashboardSubTab === 'storefront' && (
+                  <StorefrontQR storeUrl={`${window.location.protocol}//${window.location.host}?mode=shop`} />
+                )}
+                {dashboardSubTab === 'fulfillment' && (
+                  <FulfillmentDispatch currentUser={currentUser} />
+                )}
+                {dashboardSubTab === 'marketing' && (
+                  <MarketingManagement />
+                )}
               </div>
             )}
 

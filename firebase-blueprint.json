@@ -108,6 +108,77 @@
         "paymentMethod": { "type": "string", "enum": ["CASH", "BANK_TRANSFER", "CHEQUE", "UPI"] }
       },
       "required": ["id", "billId", "vendorId", "amount", "date", "paymentMethod"]
+    },
+    "PromoCode": {
+      "title": "Promo Code",
+      "description": "Discount coupon for the storefront",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "code": { "type": "string" },
+        "type": { "type": "string", "enum": ["PERCENT", "FIXED"] },
+        "value": { "type": "number" },
+        "minOrderAmount": { "type": "number" },
+        "expiryDate": { "type": "string", "format": "date" },
+        "isActive": { "type": "boolean" },
+        "usageLimit": { "type": "number" },
+        "usageCount": { "type": "number" }
+      },
+      "required": ["id", "code", "type", "value", "minOrderAmount", "expiryDate", "isActive", "usageCount"]
+    },
+    "Supplier": {
+      "title": "Supplier",
+      "description": "Inventory vendor",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "contactPerson": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "address": { "type": "string" },
+        "gstNumber": { "type": "string" },
+        "paymentTerms": { "type": "string" },
+        "totalOwed": { "type": "number" },
+        "totalPaid": { "type": "number" }
+      },
+      "required": ["id", "name", "totalOwed", "totalPaid"]
+    },
+    "PurchaseOrder": {
+      "title": "Purchase Order",
+      "description": "Order sent to a supplier",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "supplierId": { "type": "string" },
+        "supplierName": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "items": { "type": "array" },
+        "totalAmount": { "type": "number" },
+        "status": { "type": "string", "enum": ["DRAFT", "SENT", "RECEIVED", "CANCELLED"] },
+        "receivedDate": { "type": "string" },
+        "branchId": { "type": "string" }
+      },
+      "required": ["id", "supplierId", "date", "items", "totalAmount", "status", "branchId"]
+    },
+    "StockLog": {
+      "title": "Stock Log",
+      "description": "Historical record of stock movement",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "productId": { "type": "string" },
+        "productName": { "type": "string" },
+        "barcode": { "type": "string" },
+        "quantityAdded": { "type": "number" },
+        "purchasePrice": { "type": "number" },
+        "actionType": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "branchId": { "type": "string" },
+        "supplierId": { "type": "string" },
+        "billNumber": { "type": "string" }
+      },
+      "required": ["id", "productId", "quantityAdded", "actionType", "date", "branchId"]
     }
   },
   "firestore": {
@@ -138,6 +209,22 @@
     "/vendor_payments/{paymentId}": {
       "schema": "VendorPayment",
       "description": "Payments to vendors"
+    },
+    "/promo_codes/{promoId}": {
+      "schema": "PromoCode",
+      "description": "Promotional discount codes"
+    },
+    "/suppliers/{supplierId}": {
+      "schema": "Supplier",
+      "description": "External vendors"
+    },
+    "/purchase_orders/{poId}": {
+      "schema": "PurchaseOrder",
+      "description": "Inventory procurement"
+    },
+    "/stock_logs/{logId}": {
+      "schema": "StockLog",
+      "description": "Historical stock entries"
     }
   }
 }

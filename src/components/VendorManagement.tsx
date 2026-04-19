@@ -518,9 +518,9 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({ onDataUpdate
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden"
+              className="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
             >
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-emerald-50">
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-emerald-50 flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <div className="p-2 bg-emerald-600 rounded-lg">
                     <Building2 className="w-5 h-5 text-white" />
@@ -531,8 +531,9 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({ onDataUpdate
                   <X className="w-5 h-5 text-emerald-400" />
                 </button>
               </div>
-              <div className="p-6 overflow-y-auto max-h-[70vh]">
-                <form onSubmit={handleAddVendor} className="space-y-4">
+
+              <form onSubmit={handleAddVendor} className="flex flex-col flex-1 overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-6 space-y-4">
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Vendor / Business Name</label>
@@ -573,14 +574,15 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({ onDataUpdate
                       />
                     </div>
                   </div>
-                  <div className="flex gap-3 pt-4">
-                    <button type="button" onClick={() => setIsAddVendorModalOpen(false)} className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-600">Cancel</button>
-                    <button type="submit" disabled={isSubmitting} className="flex-[2] py-3 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-100 disabled:opacity-50">
-                      {isSubmitting ? 'Saving...' : 'Register Vendor'}
-                    </button>
-                  </div>
-                </form>
-              </div>
+                </div>
+
+                <div className="flex gap-3 p-6 border-t border-gray-100 bg-gray-50 flex-shrink-0">
+                  <button type="button" onClick={() => setIsAddVendorModalOpen(false)} className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-600">Cancel</button>
+                  <button type="submit" disabled={isSubmitting} className="flex-[2] py-3 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-100 disabled:opacity-50">
+                    {isSubmitting ? 'Saving...' : 'Register Vendor'}
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </div>
         )}
@@ -594,9 +596,9 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({ onDataUpdate
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden"
+              className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
             >
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-slate-900">
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-slate-900 flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <div className="p-2 bg-slate-800 rounded-lg">
                     <FileText className="w-5 h-5 text-white" />
@@ -607,133 +609,134 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({ onDataUpdate
                   <X className="w-5 h-5 text-slate-400" />
                 </button>
               </div>
-              <div className="p-6 overflow-y-auto max-h-[70vh]">
-                <form onSubmit={handleAddBill} className="space-y-6">
+
+              <form onSubmit={handleAddBill} className="flex flex-col flex-1 overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-6 space-y-6">
                   <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Select Vendor</label>
-                    <select 
-                      required
-                      className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm"
-                      value={billForm.vendorId}
-                      onChange={e => setBillForm({ ...billForm, vendorId: e.target.value })}
-                    >
-                      <option value="">Choose Vendor...</option>
-                      {data.vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-                    </select>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Select Vendor</label>
+                      <select 
+                        required
+                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+                        value={billForm.vendorId}
+                        onChange={e => setBillForm({ ...billForm, vendorId: e.target.value })}
+                      >
+                        <option value="">Choose Vendor...</option>
+                        {data.vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Bill / Invoice #</label>
+                      <input 
+                        type="text" required 
+                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono"
+                        value={billForm.billNumber}
+                        onChange={e => setBillForm({ ...billForm, billNumber: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Bill Date</label>
+                      <input 
+                        type="date" required 
+                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+                        value={billForm.date}
+                        onChange={e => setBillForm({ ...billForm, date: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Due Date</label>
+                      <input 
+                        type="date" required 
+                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+                        value={billForm.dueDate}
+                        onChange={e => setBillForm({ ...billForm, dueDate: e.target.value })}
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Bill / Invoice #</label>
-                    <input 
-                      type="text" required 
-                      className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono"
-                      value={billForm.billNumber}
-                      onChange={e => setBillForm({ ...billForm, billNumber: e.target.value })}
-                    />
+
+                  <div className="space-y-3">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Bill Items</label>
+                    <div className="space-y-2">
+                      {billForm.items.map((item, idx) => (
+                        <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                          <div className="col-span-6">
+                            <input 
+                              placeholder="Description"
+                              className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs"
+                              value={item.description}
+                              onChange={e => {
+                                const newItems = [...billForm.items];
+                                newItems[idx].description = e.target.value;
+                                setBillForm({ ...billForm, items: newItems });
+                              }}
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <input 
+                              type="number" placeholder="Qty"
+                              className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs"
+                              value={item.quantity}
+                              onChange={e => {
+                                const newItems = [...billForm.items];
+                                newItems[idx].quantity = parseInt(e.target.value) || 0;
+                                newItems[idx].total = newItems[idx].quantity * newItems[idx].unitPrice;
+                                const totalAmount = newItems.reduce((sum, i) => sum + i.total, 0);
+                                setBillForm({ ...billForm, items: newItems, totalAmount });
+                              }}
+                            />
+                          </div>
+                          <div className="col-span-3">
+                            <input 
+                              type="number" placeholder="Price"
+                              className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs"
+                              value={item.unitPrice}
+                              onChange={e => {
+                                const newItems = [...billForm.items];
+                                newItems[idx].unitPrice = parseFloat(e.target.value) || 0;
+                                newItems[idx].total = newItems[idx].quantity * newItems[idx].unitPrice;
+                                const totalAmount = newItems.reduce((sum, i) => sum + i.total, 0);
+                                setBillForm({ ...billForm, items: newItems, totalAmount });
+                              }}
+                            />
+                          </div>
+                          <div className="col-span-1">
+                            <button 
+                              type="button"
+                              onClick={() => {
+                                const newItems = billForm.items.filter((_, i) => i !== idx);
+                                const totalAmount = newItems.reduce((sum, i) => sum + i.total, 0);
+                                setBillForm({ ...billForm, items: newItems, totalAmount });
+                              }}
+                              className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      <button 
+                        type="button"
+                        onClick={() => setBillForm({ ...billForm, items: [...billForm.items, { description: '', quantity: 1, unitPrice: 0, total: 0 }] })}
+                        className="text-[10px] font-bold text-slate-500 hover:text-slate-900 flex items-center gap-1 uppercase tracking-widest"
+                      >
+                        <Plus className="w-3 h-3" /> Add Item
+                      </button>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Bill Date</label>
-                    <input 
-                      type="date" required 
-                      className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm"
-                      value={billForm.date}
-                      onChange={e => setBillForm({ ...billForm, date: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Due Date</label>
-                    <input 
-                      type="date" required 
-                      className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm"
-                      value={billForm.dueDate}
-                      onChange={e => setBillForm({ ...billForm, dueDate: e.target.value })}
-                    />
+
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Bill Amount</span>
+                    <span className="text-xl font-bold text-slate-900">{formatCurrency(billForm.totalAmount)}</span>
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Bill Items</label>
-                  <div className="space-y-2">
-                    {billForm.items.map((item, idx) => (
-                      <div key={idx} className="grid grid-cols-12 gap-2 items-center">
-                        <div className="col-span-6">
-                          <input 
-                            placeholder="Description"
-                            className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs"
-                            value={item.description}
-                            onChange={e => {
-                              const newItems = [...billForm.items];
-                              newItems[idx].description = e.target.value;
-                              setBillForm({ ...billForm, items: newItems });
-                            }}
-                          />
-                        </div>
-                        <div className="col-span-2">
-                          <input 
-                            type="number" placeholder="Qty"
-                            className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs"
-                            value={item.quantity}
-                            onChange={e => {
-                              const newItems = [...billForm.items];
-                              newItems[idx].quantity = parseInt(e.target.value) || 0;
-                              newItems[idx].total = newItems[idx].quantity * newItems[idx].unitPrice;
-                              const totalAmount = newItems.reduce((sum, i) => sum + i.total, 0);
-                              setBillForm({ ...billForm, items: newItems, totalAmount });
-                            }}
-                          />
-                        </div>
-                        <div className="col-span-3">
-                          <input 
-                            type="number" placeholder="Price"
-                            className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs"
-                            value={item.unitPrice}
-                            onChange={e => {
-                              const newItems = [...billForm.items];
-                              newItems[idx].unitPrice = parseFloat(e.target.value) || 0;
-                              newItems[idx].total = newItems[idx].quantity * newItems[idx].unitPrice;
-                              const totalAmount = newItems.reduce((sum, i) => sum + i.total, 0);
-                              setBillForm({ ...billForm, items: newItems, totalAmount });
-                            }}
-                          />
-                        </div>
-                        <div className="col-span-1">
-                          <button 
-                            type="button"
-                            onClick={() => {
-                              const newItems = billForm.items.filter((_, i) => i !== idx);
-                              const totalAmount = newItems.reduce((sum, i) => sum + i.total, 0);
-                              setBillForm({ ...billForm, items: newItems, totalAmount });
-                            }}
-                            className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    <button 
-                      type="button"
-                      onClick={() => setBillForm({ ...billForm, items: [...billForm.items, { description: '', quantity: 1, unitPrice: 0, total: 0 }] })}
-                      className="text-[10px] font-bold text-slate-500 hover:text-slate-900 flex items-center gap-1 uppercase tracking-widest"
-                    >
-                      <Plus className="w-3 h-3" /> Add Item
-                    </button>
-                  </div>
+                <div className="flex gap-3 p-6 border-t border-gray-100 bg-gray-50 flex-shrink-0">
+                  <button type="button" onClick={() => setIsAddBillModalOpen(false)} className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-600">Cancel</button>
+                  <button type="submit" disabled={isSubmitting} className="flex-[2] py-3 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 shadow-lg shadow-slate-200 disabled:opacity-50">
+                    {isSubmitting ? 'Recording...' : 'Save Bill'}
+                  </button>
                 </div>
-
-                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Bill Amount</span>
-                  <span className="text-xl font-bold text-slate-900">{formatCurrency(billForm.totalAmount)}</span>
-                </div>
-
-                <div className="flex gap-3">
-                    <button type="button" onClick={() => setIsAddBillModalOpen(false)} className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-600">Cancel</button>
-                    <button type="submit" disabled={isSubmitting} className="flex-[2] py-3 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 shadow-lg shadow-slate-200 disabled:opacity-50">
-                      {isSubmitting ? 'Recording...' : 'Save Bill'}
-                    </button>
-                  </div>
-                </form>
-              </div>
+              </form>
             </motion.div>
           </div>
         )}
@@ -747,9 +750,9 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({ onDataUpdate
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
+              className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
             >
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-emerald-600">
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-emerald-600 flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <div className="p-2 bg-emerald-500 rounded-lg text-white">
                     <CreditCard className="w-5 h-5" />
@@ -760,75 +763,76 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({ onDataUpdate
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <div className="p-6 overflow-y-auto max-h-[70vh]">
-                <form onSubmit={handlePaymentSubmit} className="space-y-6">
-                <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
-                  <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest mb-1">Paying Balance for {selectedBill.billNumber}</p>
-                  <p className="text-lg font-bold text-emerald-900">{selectedBill.vendorName}</p>
-                  <div className="mt-2 flex items-center justify-between">
-                    <span className="text-xs text-emerald-700">Outstanding:</span>
-                    <span className="text-sm font-bold text-emerald-900">{formatCurrency(selectedBill.balance)}</span>
-                  </div>
-                </div>
 
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Payment Amount</label>
-                    <div className="relative">
-                      <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <input 
-                        type="number" required max={selectedBill.balance}
-                        className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-lg font-bold outline-none focus:ring-2 focus:ring-emerald-500/20"
-                        value={paymentForm.amount}
-                        onChange={e => setPaymentForm({ ...paymentForm, amount: parseFloat(e.target.value) || 0 })}
-                      />
+              <form onSubmit={handlePaymentSubmit} className="flex flex-col flex-1 overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                  <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
+                    <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest mb-1">Paying Balance for {selectedBill.billNumber}</p>
+                    <p className="text-lg font-bold text-emerald-900">{selectedBill.vendorName}</p>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-xs text-emerald-700">Outstanding:</span>
+                      <span className="text-sm font-bold text-emerald-900">{formatCurrency(selectedBill.balance)}</span>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+
+                  <div className="space-y-4">
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Method</label>
-                      <select 
-                        required
-                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm"
-                        value={paymentForm.paymentMethod}
-                        onChange={e => setPaymentForm({ ...paymentForm, paymentMethod: e.target.value as any })}
-                      >
-                        <option value="UPI">UPI</option>
-                        <option value="BANK_TRANSFER">Bank Transfer</option>
-                        <option value="CASH">Cash</option>
-                        <option value="CHEQUE">Cheque</option>
-                      </select>
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Payment Amount</label>
+                      <div className="relative">
+                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input 
+                          type="number" required max={selectedBill.balance}
+                          className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-lg font-bold outline-none focus:ring-2 focus:ring-emerald-500/20"
+                          value={paymentForm.amount}
+                          onChange={e => setPaymentForm({ ...paymentForm, amount: parseFloat(e.target.value) || 0 })}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Method</label>
+                        <select 
+                          required
+                          className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+                          value={paymentForm.paymentMethod}
+                          onChange={e => setPaymentForm({ ...paymentForm, paymentMethod: e.target.value as any })}
+                        >
+                          <option value="UPI">UPI</option>
+                          <option value="BANK_TRANSFER">Bank Transfer</option>
+                          <option value="CASH">Cash</option>
+                          <option value="CHEQUE">Cheque</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Reference #</label>
+                        <input 
+                          type="text"
+                          className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono"
+                          value={paymentForm.referenceNumber}
+                          onChange={e => setPaymentForm({ ...paymentForm, referenceNumber: e.target.value })}
+                          placeholder="UTR / Txn ID"
+                        />
+                      </div>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Reference #</label>
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Internal Note</label>
                       <input 
                         type="text"
-                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono"
-                        value={paymentForm.referenceNumber}
-                        onChange={e => setPaymentForm({ ...paymentForm, referenceNumber: e.target.value })}
-                        placeholder="UTR / Txn ID"
+                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+                        value={paymentForm.note}
+                        onChange={e => setPaymentForm({ ...paymentForm, note: e.target.value })}
                       />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Internal Note</label>
-                    <input 
-                      type="text"
-                      className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm"
-                      value={paymentForm.note}
-                      onChange={e => setPaymentForm({ ...paymentForm, note: e.target.value })}
-                    />
-                  </div>
                 </div>
 
-                <div className="flex gap-3">
-                    <button type="button" onClick={() => setIsPaymentModalOpen(false)} className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-600">Cancel</button>
-                    <button type="submit" disabled={isSubmitting || paymentForm.amount <= 0} className="flex-[2] py-3 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-100">
-                      {isSubmitting ? 'Processing...' : 'Confirm Payment'}
-                    </button>
-                  </div>
-                </form>
-              </div>
+                <div className="flex gap-3 p-6 border-t border-gray-100 bg-gray-50 flex-shrink-0">
+                  <button type="button" onClick={() => setIsPaymentModalOpen(false)} className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-600">Cancel</button>
+                  <button type="submit" disabled={isSubmitting || paymentForm.amount <= 0} className="flex-[2] py-3 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-100">
+                    {isSubmitting ? 'Processing...' : 'Confirm Payment'}
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </div>
         )}
@@ -842,9 +846,9 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({ onDataUpdate
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden"
+              className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
             >
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <FileText className="w-5 h-5 text-slate-400" />
                   <h3 className="text-xl font-bold text-slate-900">Bill Details: {selectedBill.billNumber}</h3>
@@ -853,7 +857,8 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({ onDataUpdate
                   <X className="w-5 h-5 text-slate-400" />
                 </button>
               </div>
-              <div className="p-6 space-y-6">
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 <div className="grid grid-cols-2 gap-8 py-4 border-b border-slate-50">
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Vendor</p>
@@ -912,7 +917,7 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({ onDataUpdate
                   </div>
                 </div>
               </div>
-              <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+              <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 flex-shrink-0">
                  <button onClick={() => setSelectedBill(null)} className="px-6 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-100 transition-all">Close</button>
                  {selectedBill.status !== 'PAID' && hasPermission(currentUser, 'suppliers', 'edit') && (
                    <button 

@@ -14,10 +14,13 @@ import {
   FileText,
   Truck,
   ArrowRight,
-  Trash2
+  Trash2,
+  Zap,
+  Check,
+  Loader2
 } from 'lucide-react';
-import { PurchaseOrder, Supplier, InventoryItem, User as UserType } from '../types';
-import { fetchPurchaseOrders, createPurchaseOrder, receivePurchaseOrder, fetchSuppliers, fetchInventory, hasPermission } from '../services/api';
+import { PurchaseOrder, Supplier, InventoryItem, User as UserType, SmartProcurementSuggestion } from '../types';
+import { fetchPurchaseOrders, createPurchaseOrder, receivePurchaseOrder, fetchSuppliers, fetchInventory, hasPermission, generateProcurementSuggestions } from '../services/api';
 import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
 
@@ -32,6 +35,8 @@ export const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = (
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isSmartPOOpen, setIsSmartPOOpen] = useState(false);
+  const [suggestions, setSuggestions] = useState<SmartProcurementSuggestion[]>([]);
   
   // New PO State
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
@@ -145,8 +150,32 @@ export const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = (
     po.supplierName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleSmartProcure = async () => {
+    setLoading(true);
+    try {
+      const data = await generateProcurementSuggestions();
+      setSuggestions(data);
+      setIsSmartPOOpen(true);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createPOFromSuggestion = (suggestion: SmartProcurementSuggestion) => {
+    setSelectedSupplierId(suggestion.preferredSupplierId || (suppliers.length > 0 ? suppliers[0].id : ''));
+    setPoItems([{
+      productId: suggestion.productId,
+      quantity: suggestion.suggestedQuantity,
+      unitPrice: suggestion.lastPurchasePrice
+    }]);
+    setIsSmartPOOpen(false);
+    setIsModalOpen(true);
+  };
+
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-6 max-w-7xl mx-auto space-y-6" id="purchase-order-management">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -155,15 +184,24 @@ export const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = (
           </h1>
           <p className="text-sm text-gray-500">Manage procurement and stock replenishment</p>
         </div>
-        {canCreate && (
+        <div className="flex items-center gap-3">
           <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+            onClick={handleSmartProcure}
+            className="flex items-center gap-2 bg-emerald-50 text-emerald-600 border border-emerald-100 px-4 py-2 rounded-lg hover:bg-emerald-100 transition-colors shadow-sm text-sm font-bold"
           >
-            <Plus className="w-4 h-4" />
-            Create PO
+            <Zap className="w-4 h-4" />
+            Smart PO Engine
           </button>
-        )}
+          {canCreate && (
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              Create PO
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="relative">
@@ -384,6 +422,78 @@ export const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = (
                     Send Purchase Order
                   </button>
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {isSmartPOOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white w-full max-w-4xl rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                   <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                     <Zap className="w-5 h-5 text-emerald-500 fill-emerald-500/10" />
+                     Smart Procurement Suggestions
+                   </h3>
+                   <p className="text-sm text-gray-500">Heuristic engine based on low stock alerts and threshold rules.</p>
+                </div>
+                <button onClick={() => setIsSmartPOOpen(false)} className="p-2 hover:bg-gray-100 rounded-lg text-gray-400"><X className="w-5 h-5" /></button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="grid grid-cols-1 gap-4">
+                  {suggestions.length === 0 ? (
+                    <div className="py-20 text-center text-gray-400">
+                      <CheckCircle2 className="w-12 h-12 text-emerald-500/20 mx-auto mb-4" />
+                      <p className="font-medium">All stock levels are optimal.</p>
+                      <p className="text-sm">No items currently below their thresholds.</p>
+                    </div>
+                  ) : suggestions.map((s, i) => (
+                    <div key={i} className="flex items-center justify-between p-6 bg-slate-50 border border-slate-100 rounded-2xl hover:border-emerald-200 hover:bg-emerald-50/30 transition-all group">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-white rounded-xl border border-slate-100 flex items-center justify-center text-slate-400 shadow-sm">
+                          <Package className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-900">{s.productName}</p>
+                          <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                             <span className="text-rose-500">Stock: {s.currentStock}</span>
+                             <span>Min: {s.threshold}</span>
+                             <span className="text-emerald-600 font-black">Suggest: +{s.suggestedQuantity}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-6">
+                         <div className="text-right">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Est. Cost</p>
+                            <p className="text-sm font-black text-slate-900">₹{(s.suggestedQuantity * s.lastPurchasePrice).toLocaleString()}</p>
+                         </div>
+                         <button 
+                           onClick={() => createPOFromSuggestion(s)}
+                           className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-emerald-600 transition-all flex items-center gap-2 group-hover:scale-105"
+                         >
+                           Generate PO
+                           <ArrowRight className="w-4 h-4" />
+                         </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-end">
+                <button 
+                  onClick={() => setIsSmartPOOpen(false)}
+                   className="px-6 py-2 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-100 font-bold transition-all"
+                >
+                  Close Engine
+                </button>
               </div>
             </motion.div>
           </div>

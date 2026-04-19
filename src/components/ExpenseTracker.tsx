@@ -323,100 +323,104 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({ currentUser }) =
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden"
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]"
             >
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between shrink-0">
                 <h2 className="text-xl font-bold text-gray-900">Record Expense</h2>
                 <button onClick={() => setShowAddForm(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                   <X className="w-5 h-5 text-gray-400" />
                 </button>
               </div>
               
-              <form onSubmit={handleAddExpense} className="p-6 space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Expense Title</label>
-                  <input 
-                    type="text" 
-                    required
-                    placeholder="e.g. Office Supplies"
-                    value={newExpense.title}
-                    onChange={(e) => setNewExpense({...newExpense, title: e.target.value})}
-                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
+              <form onSubmit={handleAddExpense} className="flex flex-col flex-1 overflow-hidden">
+                <div className="p-6 space-y-4 overflow-y-auto flex-1">
                   <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Amount (₹)</label>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Expense Title</label>
                     <input 
-                      type="number" 
+                      type="text" 
                       required
-                      placeholder="0.00"
-                      value={newExpense.amount}
-                      onChange={(e) => setNewExpense({...newExpense, amount: e.target.value})}
+                      placeholder="e.g. Office Supplies"
+                      value={newExpense.title}
+                      onChange={(e) => setNewExpense({...newExpense, title: e.target.value})}
                       className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Category</label>
-                    <select 
-                      value={newExpense.category}
-                      onChange={(e) => setNewExpense({...newExpense, category: e.target.value})}
-                      className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option>Utilities</option>
-                      <option>Rent</option>
-                      <option>Payroll</option>
-                      <option>Marketing</option>
-                      <option>Inventory</option>
-                      <option>Maintenance</option>
-                      <option>Other</option>
-                    </select>
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Date</label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Amount (₹)</label>
+                      <input 
+                        type="number" 
+                        required
+                        placeholder="0.00"
+                        value={newExpense.amount}
+                        onChange={(e) => setNewExpense({...newExpense, amount: e.target.value})}
+                        className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Category</label>
+                      <select 
+                        value={newExpense.category}
+                        onChange={(e) => setNewExpense({...newExpense, category: e.target.value})}
+                        className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option>Utilities</option>
+                        <option>Rent</option>
+                        <option>Payroll</option>
+                        <option>Marketing</option>
+                        <option>Inventory</option>
+                        <option>Maintenance</option>
+                        <option>Other</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Date</label>
+                      <input 
+                        type="date" 
+                        required
+                        value={newExpense.date}
+                        onChange={(e) => setNewExpense({...newExpense, date: e.target.value})}
+                        className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Status</label>
+                      <select 
+                        value={newExpense.status}
+                        onChange={(e) => setNewExpense({...newExpense, status: e.target.value as any})}
+                        className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="paid">Paid</option>
+                        <option value="pending">Pending</option>
+                        <option value="upcoming">Upcoming</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2">
                     <input 
-                      type="date" 
-                      required
-                      value={newExpense.date}
-                      onChange={(e) => setNewExpense({...newExpense, date: e.target.value})}
-                      className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-500"
+                      type="checkbox" 
+                      id="recurring"
+                      checked={newExpense.recurring}
+                      onChange={(e) => setNewExpense({...newExpense, recurring: e.target.checked})}
+                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                     />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Status</label>
-                    <select 
-                      value={newExpense.status}
-                      onChange={(e) => setNewExpense({...newExpense, status: e.target.value as any})}
-                      className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="paid">Paid</option>
-                      <option value="pending">Pending</option>
-                      <option value="upcoming">Upcoming</option>
-                    </select>
+                    <label htmlFor="recurring" className="text-sm text-gray-600 font-medium">Recurring monthly expense</label>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 pt-2">
-                  <input 
-                    type="checkbox" 
-                    id="recurring"
-                    checked={newExpense.recurring}
-                    onChange={(e) => setNewExpense({...newExpense, recurring: e.target.checked})}
-                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                  />
-                  <label htmlFor="recurring" className="text-sm text-gray-600 font-medium">Recurring monthly expense</label>
+                <div className="p-6 border-t border-gray-100 bg-gray-50 shrink-0">
+                  <button 
+                    type="submit"
+                    className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
+                  >
+                    Save Expense
+                  </button>
                 </div>
-
-                <button 
-                  type="submit"
-                  className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 mt-4"
-                >
-                  Save Expense
-                </button>
               </form>
             </motion.div>
           </div>

@@ -105,6 +105,18 @@ export interface Order {
   paymentStatus: 'PAID' | 'PARTIALLY_PAID' | 'UNPAID' | 'REFUNDED';
   paymentHistory?: PaymentRecord[];
   orderType: 'ONLINE' | 'IN_STORE';
+  fulfillmentStatus?: 'PENDING' | 'PACKING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+  fulfillmentLogs?: FulfillmentLog[];
+  promoCode?: string;
+  promoDiscount?: number;
+  deliveryAddress?: {
+    street: string;
+    city: string;
+    state: string;
+    pincode: string;
+  };
+  trackingNumber?: string;
+  estimatedDelivery?: string;
   branchId: string;
   date: string;
 }
@@ -122,6 +134,9 @@ export interface StockEntry {
   date: string;
   branchId: string;
   actionType: 'STOCK_IN' | 'SALE' | 'RETURN' | 'LOSS_DAMAGED' | 'LOSS_EXPIRED';
+  supplierId?: string;
+  billNumber?: string;
+  dueDate?: string;
   images?: string[];
 }
 
@@ -150,6 +165,8 @@ export interface Expense {
   branchId: string;
   status: 'paid' | 'pending' | 'upcoming';
   recurring?: boolean;
+  vendorBillId?: string;
+  vendorPaymentId?: string;
 }
 
 export interface ExpenseCategoryBreakdown {
@@ -240,7 +257,7 @@ export interface DashboardData {
   alerts: DashboardAlert[];
 }
 
-export type ModuleName = 'dashboard' | 'inventory' | 'pos' | 'orders' | 'customers' | 'payments' | 'refunds' | 'expenses' | 'reports' | 'forecasting' | 'performance' | 'rbac' | 'suppliers' | 'procurement' | 'branches' | 'loyalty' | 'profit-loss' | 'users' | 'audit';
+export type ModuleName = 'dashboard' | 'inventory' | 'pos' | 'orders' | 'customers' | 'payments' | 'refunds' | 'expenses' | 'reports' | 'forecasting' | 'performance' | 'rbac' | 'suppliers' | 'procurement' | 'branches' | 'loyalty' | 'profit-loss' | 'users' | 'audit' | 'marketing' | 'fulfillment';
 
 export type ActionType = 'view' | 'create' | 'edit' | 'delete' | 'approve';
 
@@ -353,7 +370,37 @@ export interface AuditLog {
   userId: string;
   userName: string;
   action: string;
-  module: ModuleName;
+  module: ModuleName | 'Online Order';
   details: string;
   timestamp: string;
+}
+
+export interface PromoCode {
+  id: string;
+  code: string;
+  type: 'PERCENT' | 'FIXED';
+  value: number;
+  minOrderAmount: number;
+  maxDiscount?: number;
+  expiryDate: string;
+  isActive: boolean;
+  usageLimit?: number;
+  usageCount: number;
+}
+
+export interface FulfillmentLog {
+  status: 'PENDING' | 'PACKING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+  timestamp: string;
+  note?: string;
+  updatedBy: string;
+}
+
+export interface SmartProcurementSuggestion {
+  productId: string;
+  productName: string;
+  currentStock: number;
+  threshold: number;
+  suggestedQuantity: number;
+  lastPurchasePrice: number;
+  preferredSupplierId?: string;
 }
