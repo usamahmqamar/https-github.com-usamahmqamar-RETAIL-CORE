@@ -6,7 +6,7 @@ import {
   ChevronDown, Truck, ClipboardList, Building2, Camera
 } from 'lucide-react';
 import { auth } from './lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { fetchDashboardData, getCurrentUser, fetchUsers, fetchRoles, switchUser, hasPermission } from './services/api';
 import { DashboardData, User, Role, ModuleName } from './types';
 import { KPICard } from './components/KPICard';
@@ -125,9 +125,15 @@ export default function App() {
     }
   };
 
-  const handleTestingBypass = () => {
-    setIsAuthenticated(true);
-    loadInitialData();
+  const handleTestingBypass = async () => {
+    try {
+      await signInAnonymously(auth);
+    } catch (error) {
+      console.error("Anonymous sign-in failed:", error);
+      // Fallback if anonymous auth is disabled
+      setIsAuthenticated(true);
+      loadInitialData();
+    }
   };
 
   const handleBarcodeScan = (code: string) => {
