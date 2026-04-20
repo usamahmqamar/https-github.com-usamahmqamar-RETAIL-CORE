@@ -6,16 +6,29 @@ import firebaseConfig from '../../firebase-applet-config.json';
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+
+// Initialize Firestore - handle missing databaseId in config
+const config = firebaseConfig as any;
+export const db = config.firestoreDatabaseId && config.firestoreDatabaseId !== "(default)"
+  ? getFirestore(app, config.firestoreDatabaseId)
+  : getFirestore(app);
+
 export const googleProvider = new GoogleAuthProvider();
 
-// Connection Test
+// Connection Test with better error reporting
 async function testConnection() {
   try {
+    // Attempting to fetch a real document path to test connection
     await getDocFromServer(doc(db, 'test', 'connection'));
+    console.log("Firebase connection established successfully.");
   } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration. The client is offline.");
+    const err = error as any;
+    console.warn("Firebase Connection Warning:", err.message);
+    
+    if (err.message?.includes('the client is offline')) {
+      console.error("CRITICAL: Firebase client is offline. This usually means the Project ID is incorrect or Firestore is not enabled in your console.");
+    } else if (err.code === 'permission-denied') {
+      console.log("Firebase connection successful (but permission denied for test doc, which is expected).");
     }
   }
 }
