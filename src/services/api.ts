@@ -1361,6 +1361,17 @@ export const receivePurchaseOrder = async (id: string): Promise<PurchaseOrder> =
   }
 };
 
+export const updatePurchaseOrder = async (po: PurchaseOrder): Promise<void> => {
+  try {
+    const poRef = doc(db, 'purchase_orders', po.id);
+    await setDoc(poRef, po);
+    await addAuditLog('Updated PO', 'procurement', `Amended PO ${po.id} for ${po.supplierName}`);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, 'procurement');
+    throw error;
+  }
+};
+
 export const fetchInventory = async (): Promise<InventoryItem[]> => {
   try {
     const snapshot = await getDocs(collection(db, 'inventory'));

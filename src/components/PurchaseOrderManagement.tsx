@@ -17,12 +17,16 @@ import {
   Trash2,
   Zap,
   Check,
-  Loader2
+  Loader2,
+  Download,
+  Edit2
 } from 'lucide-react';
 import { PurchaseOrder, Supplier, InventoryItem, User as UserType, SmartProcurementSuggestion } from '../types';
-import { fetchPurchaseOrders, createPurchaseOrder, receivePurchaseOrder, fetchSuppliers, fetchInventory, hasPermission, generateProcurementSuggestions } from '../services/api';
+import { fetchPurchaseOrders, createPurchaseOrder, receivePurchaseOrder, fetchSuppliers, fetchInventory, hasPermission, generateProcurementSuggestions, updatePurchaseOrder } from '../services/api';
 import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface PurchaseOrderManagementProps {
   currentUser: UserType;
@@ -34,6 +38,8 @@ export const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = (
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingPoId, setEditingPoId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isSmartPOOpen, setIsSmartPOOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<SmartProcurementSuggestion[]>([]);
@@ -66,6 +72,53 @@ export const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = (
     }
   };
 
+  const handleDownloadPDF = (po: PurchaseOrder) => {
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(22);
+    doc.text('PURCHASE ORDER', 105, 20, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.text(`PO Number: ${po.id}`, 14, 40);
+    doc.text(`Date: ${format(new Date(po.date), 'MMM dd, yyyy')}`, 14, 45);
+    doc.text(`Branch: ${po.branchId === 'b1' ? 'Main Store' : 'Westside Branch'}`, 14, 50);
+    
+    doc.text('SUPPLIER:', 14, 65);
+    doc.setFontSize(12);
+    doc.text(po.supplierName, 14, 72);
+    
+    // Table
+    autoTable(doc, {
+      startY: 85,
+      head: [['Product', 'SKU', 'Qty', 'Unit Price', 'Total']],
+      body: po.items.map(item => [
+        item.productName,
+        item.sku,
+        item.quantity,
+        `Rs. ${item.unitPrice.toLocaleString()}`,
+        `Rs. ${item.totalPrice.toLocaleString()}`
+      ]),
+      foot: [['', '', '', 'TOTAL AMOUNT', `Rs. ${po.totalAmount.toLocaleString()}`]],
+      theme: 'grid',
+      headStyles: { fillColor: [79, 70, 229] }
+    });
+    
+    doc.save(`${po.id}.pdf`);
+  };
+
+  const handleEditClick = (po: PurchaseOrder) => {
+    setSelectedSupplierId(po.supplierId);
+    setPoItems(po.items.map(item => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice
+    })));
+    setEditingPoId(po.id);
+    setIsEditing(true);
+    setIsModalOpen(true);
+  };
+
   const handleCreatePO = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedSupplierId || poItems.length === 0) return;
@@ -88,19 +141,34 @@ export const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = (
     const totalAmount = items.reduce((sum, item) => sum + item.totalPrice, 0);
 
     try {
-      await createPurchaseOrder({
-        supplierId: selectedSupplierId,
-        supplierName: supplier.name,
-        items,
-        totalAmount,
-        branchId: currentUser.branchId
-      });
+      if (isEditing && editingPoId) {
+        const poToUpdate = purchaseOrders.find(p => p.id === editingPoId);
+        if (poToUpdate) {
+          await updatePurchaseOrder({
+            ...poToUpdate,
+            supplierId: selectedSupplierId,
+            supplierName: supplier.name,
+            items,
+            totalAmount
+          });
+        }
+      } else {
+        await createPurchaseOrder({
+          supplierId: selectedSupplierId,
+          supplierName: supplier.name,
+          items,
+          totalAmount,
+          branchId: currentUser.branchId
+        });
+      }
       setIsModalOpen(false);
+      setIsEditing(false);
+      setEditingPoId(null);
       setSelectedSupplierId('');
       setPoItems([]);
       loadData();
     } catch (error) {
-      console.error('Failed to create PO', error);
+      console.error('Failed to process PO', error);
     }
   };
 
@@ -193,8 +261,14 @@ export const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = (
             Smart PO Engine
           </button>
           {canCreate && (
-            <button
-              onClick={() => setIsModalOpen(true)}
+            <button 
+              onClick={() => {
+                setIsModalOpen(true);
+                setIsEditing(false);
+                setEditingPoId(null);
+                setSelectedSupplierId('');
+                setPoItems([]);
+              }} 
               className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
             >
               <Plus className="w-4 h-4" />
@@ -251,21 +325,39 @@ export const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = (
                   </span>
                 </td>
                 <td className="px-6 py-4 text-right">
-                  {po.status === 'SENT' && canApprove && (
+                  <div className="flex items-center gap-2 justify-end">
                     <button
-                      onClick={() => handleReceivePO(po.id)}
-                      className="text-indigo-600 hover:text-indigo-700 text-sm font-medium flex items-center gap-1 ml-auto"
+                      onClick={() => handleDownloadPDF(po)}
+                      title="Download PDF"
+                      className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
                     >
-                      Receive Stock
-                      <ArrowRight className="w-4 h-4" />
+                      <Download className="w-4 h-4" />
                     </button>
-                  )}
-                  {po.status === 'RECEIVED' && (
-                    <div className="flex items-center gap-1 text-green-600 text-sm font-medium ml-auto justify-end">
-                      <CheckCircle2 className="w-4 h-4" />
-                      Stock Added
-                    </div>
-                  )}
+                    {po.status === 'SENT' && (
+                      <button
+                        onClick={() => handleEditClick(po)}
+                        title="Amend PO"
+                        className="p-2 text-gray-400 hover:text-amber-600 transition-colors"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                    )}
+                    {po.status === 'SENT' && canApprove && (
+                      <button
+                        onClick={() => handleReceivePO(po.id)}
+                        className="text-indigo-600 hover:text-indigo-700 text-sm font-medium flex items-center gap-1"
+                      >
+                        Receive Stock
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    )}
+                    {po.status === 'RECEIVED' && (
+                      <div className="flex items-center gap-1 text-green-600 text-sm font-medium">
+                        <CheckCircle2 className="w-4 h-4" />
+                        Stock Added
+                      </div>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -291,8 +383,12 @@ export const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = (
               className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]"
             >
               <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-indigo-600 text-white">
-                <h2 className="text-xl font-bold">Create Purchase Order</h2>
-                <button onClick={() => setIsModalOpen(false)} className="text-white/80 hover:text-white">
+                <h2 className="text-xl font-bold">{isEditing ? `Amend Purchase Order: ${editingPoId}` : 'Create Purchase Order'}</h2>
+                <button onClick={() => {
+                  setIsModalOpen(false);
+                  setIsEditing(false);
+                  setEditingPoId(null);
+                }} className="text-white/80 hover:text-white">
                   <X className="w-6 h-6" />
                 </button>
               </div>
@@ -409,7 +505,11 @@ export const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = (
                 <div className="flex gap-3">
                   <button
                     type="button"
-                    onClick={() => setIsModalOpen(false)}
+                    onClick={() => {
+                      setIsModalOpen(false);
+                      setIsEditing(false);
+                      setEditingPoId(null);
+                    }}
                     className="px-6 py-2 border border-gray-200 text-gray-600 rounded-lg hover:bg-white transition-colors"
                   >
                     Cancel
@@ -419,7 +519,7 @@ export const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = (
                     disabled={!selectedSupplierId || poItems.length === 0}
                     className="px-8 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Send Purchase Order
+                    {isEditing ? 'Save Changes' : 'Send Purchase Order'}
                   </button>
                 </div>
               </div>
