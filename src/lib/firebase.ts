@@ -1,34 +1,33 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { getFirestore, doc, getDoc, getDocs, collection, query, where, onSnapshot, setDoc, updateDoc, addDoc, deleteDoc, getDocFromServer } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, getDocs, collection, query, where, onSnapshot, setDoc, updateDoc, addDoc, deleteDoc, getDocFromServer, initializeFirestore } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
-// Initialize Firestore - handle missing databaseId in config
+// Initialize Firestore with long-polling to avoid connection issues in some environments
 const config = firebaseConfig as any;
-export const db = config.firestoreDatabaseId && config.firestoreDatabaseId !== "(default)"
-  ? getFirestore(app, config.firestoreDatabaseId)
-  : getFirestore(app);
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+}, config.firestoreDatabaseId && config.firestoreDatabaseId !== "(default)" ? config.firestoreDatabaseId : undefined);
 
 export const googleProvider = new GoogleAuthProvider();
 
-// Connection Test with better error reporting
+// Connection Test with better action-oriented error reporting
 async function testConnection() {
   try {
-    // Attempting to fetch a real document path to test connection
     await getDocFromServer(doc(db, 'test', 'connection'));
     console.log("Firebase connection established successfully.");
   } catch (error) {
     const err = error as any;
     console.warn("Firebase Connection Warning:", err.message);
     
-    if (err.message?.includes('the client is offline')) {
-      console.error("CRITICAL: Firebase client is offline. This usually means the Project ID is incorrect or Firestore is not enabled in your console.");
+    if (err.message?.includes('the client is offline') || err.code === 'unavailable') {
+      console.error("CRITICAL: Cannot reach Firebase. 1. Ensure Firestore is created in your console. 2. Ensure your Project ID 'retailcore-74977' is correct.");
     } else if (err.code === 'permission-denied') {
-      console.log("Firebase connection successful (but permission denied for test doc, which is expected).");
+      console.log("Firebase connection verified (permission denied is expected for test path).");
     }
   }
 }

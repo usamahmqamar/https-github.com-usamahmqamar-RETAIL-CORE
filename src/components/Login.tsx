@@ -8,12 +8,34 @@ interface LoginProps {
 }
 
 export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
+  const [error, setError] = React.useState<string | null>(null);
+
   const handleLogin = async () => {
+    setError(null);
     try {
       await signInWithPopup(auth, googleProvider);
       onLoginSuccess();
-    } catch (error) {
-      console.error("Login failed:", error);
+    } catch (err: any) {
+      console.error("Login failed:", err);
+      if (err.code === 'auth/configuration-not-found') {
+        setError("Firebase Authentication is not enabled. Please enable 'Google' and 'Anonymous' in your Firebase Console.");
+      } else {
+        setError(err.message || "Login failed. Please check your connection.");
+      }
+    }
+  };
+
+  const handleBypass = async () => {
+    setError(null);
+    try {
+      await onLoginSuccess();
+    } catch (err: any) {
+      console.error("Bypass failed:", err);
+      if (err.code === 'auth/configuration-not-found') {
+        setError("Anonymous Auth is not enabled. Please enable it in the Firebase Console (Authentication > Sign-in method).");
+      } else {
+        setError(err.message || "Direct access failed.");
+      }
     }
   };
 
@@ -34,6 +56,14 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
               <h1 className="text-3xl font-black text-slate-900 tracking-tight">RetailCore</h1>
               <p className="text-sm font-bold text-slate-400 uppercase tracking-[0.2em]">Intelligence System</p>
             </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl text-rose-600 text-xs font-bold text-left leading-relaxed animate-pulse">
+                <p className="uppercase tracking-widest mb-1 opacity-70">Configuration Error</p>
+                {error}
+              </div>
+            )}
 
             {/* Features */}
             <div className="grid grid-cols-1 gap-4 text-left">
@@ -60,7 +90,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             {/* Action */}
             <div className="space-y-4 pt-4">
               <button 
-                onClick={onLoginSuccess}
+                onClick={handleBypass}
                 className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 flex items-center justify-center gap-3 active:scale-[0.98]"
               >
                 <Zap className="w-5 h-5 text-amber-500" />

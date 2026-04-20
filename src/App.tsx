@@ -128,11 +128,11 @@ export default function App() {
   const handleTestingBypass = async () => {
     try {
       await signInAnonymously(auth);
+      // The onAuthStateChanged listener in App.tsx will handle the state update
     } catch (error) {
       console.error("Anonymous sign-in failed:", error);
-      // Fallback if anonymous auth is disabled
-      setIsAuthenticated(true);
-      loadInitialData();
+      // Re-throw so the Login component can display the specific configuration error
+      throw error;
     }
   };
 
