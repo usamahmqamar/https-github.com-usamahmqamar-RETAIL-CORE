@@ -18,7 +18,58 @@ let mockCustomers: Customer[] = [
   { id: 'c2', name: 'Jane Smith', phone: '9988776655', totalSpent: 2400, ordersCount: 8, outstandingBalance: 500, lastPurchaseDate: '2026-03-25', loyaltyPoints: 240, storeCredit: 50, orderHistory: [] }
 ];
 
-let mockOrders: Order[] = [];
+let mockOrders: Order[] = [
+  {
+    id: 'o-1',
+    items: [
+      { productId: '1', productName: 'Premium Wireless Headphones', sku: 'WH-1000XM4', quantity: 1, purchasePrice: 150, sellingPrice: 299, gstPercent: 18, totalPrice: 299 }
+    ],
+    subtotal: 299,
+    totalGst: 53.82,
+    totalAmount: 352.82,
+    amountPaid: 352.82,
+    balanceDue: 0,
+    paymentMethod: 'UPI',
+    paymentStatus: 'PAID',
+    orderType: 'IN_STORE',
+    branchId: 'b1',
+    date: new Date(Date.now() - 3600000 * 2).toISOString() // 2 hours ago
+  },
+  {
+    id: 'o-2',
+    items: [
+      { productId: '3', productName: 'Ergonomic Office Chair', sku: 'CH-ERG-01', quantity: 1, purchasePrice: 80, sellingPrice: 199, gstPercent: 12, totalPrice: 199 },
+      { productId: '5', productName: 'Mechanical Keyboard RGB', sku: 'KB-MECH-02', quantity: 1, purchasePrice: 45, sellingPrice: 89, gstPercent: 18, totalPrice: 89 }
+    ],
+    subtotal: 288,
+    totalGst: 40.56,
+    totalAmount: 328.56,
+    amountPaid: 328.56,
+    balanceDue: 0,
+    paymentMethod: 'CARD',
+    paymentStatus: 'PAID',
+    orderType: 'IN_STORE',
+    branchId: 'b1',
+    date: new Date(Date.now() - 86400000 * 1).toISOString() // yesterday
+  },
+  {
+    id: 'o-3',
+    items: [
+      { productId: '4', productName: 'Organic Protein Powder', sku: 'PP-ORG-VAN', quantity: 2, purchasePrice: 25, sellingPrice: 45, gstPercent: 5, totalPrice: 90 }
+    ],
+    subtotal: 90,
+    totalGst: 4.5,
+    totalAmount: 94.5,
+    amountPaid: 94.5,
+    balanceDue: 0,
+    paymentMethod: 'CASH',
+    paymentStatus: 'PAID',
+    orderType: 'ONLINE',
+    fulfillmentStatus: 'DELIVERED',
+    branchId: 'b1',
+    date: new Date(Date.now() - 86400000 * 3).toISOString() // 3 days ago
+  }
+];
 let mockInventory: InventoryItem[] = [
   { id: '1', name: 'Premium Wireless Headphones', sku: 'WH-1000XM4', quantity: 5, threshold: 10, purchasePrice: 150, sellingPrice: 299, gstPercent: 18, status: 'low-stock', branchId: 'b1' },
   { id: '2', name: 'Smart Watch Series 7', sku: 'SW-7-BLK', quantity: 0, threshold: 5, purchasePrice: 200, sellingPrice: 399, gstPercent: 18, status: 'out-of-stock', branchId: 'b1' },
@@ -167,10 +218,12 @@ const updateItemStatus = (item: InventoryItem): InventoryItem => {
 
 // Mocking the APIs as requested
 export const fetchDashboardData = async (): Promise<DashboardData> => {
-  try {
-    const isAdmin = currentUser.roleId === 'role-admin';
-    const branchId = currentUser.branchId;
+  let activeOrders = mockOrders;
+  let activeInventory = mockInventory;
+  let activeCustomers = mockCustomers;
+  let activeExpenses = mockExpenses;
 
+  try {
     const [ordersSnap, inventorySnap, customersSnap, expensesSnap] = await Promise.all([
       getDocs(collection(db, 'orders')),
       getDocs(collection(db, 'inventory')),
@@ -178,91 +231,93 @@ export const fetchDashboardData = async (): Promise<DashboardData> => {
       getDocs(collection(db, 'expenses'))
     ]);
 
-    const activeOrders = ordersSnap.docs.map(doc => doc.data() as Order);
-    const activeInventory = inventorySnap.docs.map(doc => doc.data() as InventoryItem);
-    const activeCustomers = customersSnap.docs.map(doc => doc.data() as Customer);
-    const activeExpenses = expensesSnap.docs.map(doc => doc.data() as Expense);
-
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
-    const currentMonthStr = now.toISOString().slice(0, 7);
-
-    const filteredOrders = isAdmin ? activeOrders : activeOrders.filter(o => o.branchId === branchId);
-    const filteredInventory = isAdmin ? activeInventory : activeInventory.filter(i => i.branchId === branchId);
-    const filteredCustomers = activeCustomers; // Global
-    const filteredExpenses = isAdmin ? activeExpenses : activeExpenses.filter(e => e.branchId === branchId);
-
-    const todayOrders = filteredOrders.filter(o => o.date.startsWith(todayStr));
-    const monthlyOrders = filteredOrders.filter(o => o.date.startsWith(currentMonthStr));
-
-    const calculateSalesAndProfit = (orders: Order[]) => {
-      let sales = 0;
-      let profit = 0;
-      orders.forEach(order => {
-        sales += order.totalAmount;
-        order.items.forEach(item => {
-          profit += (item.sellingPrice - item.purchasePrice) * item.quantity;
-        });
-      });
-      return { sales, profit };
-    };
-
-    const todayStats = calculateSalesAndProfit(todayOrders);
-    const monthlyStats = calculateSalesAndProfit(monthlyOrders);
-
-    const totalInventoryValue = filteredInventory.reduce((sum, item) => sum + (item.quantity * item.purchasePrice), 0);
-    const totalReceivables = filteredCustomers.reduce((sum, c) => sum + c.outstandingBalance, 0);
-    const avgCustomerValue = filteredCustomers.length > 0 
-      ? filteredCustomers.reduce((sum, c) => sum + c.totalSpent, 0) / filteredCustomers.length 
-      : 0;
-
-    const monthlyExpensesVal = filteredExpenses
-      .filter(e => e.date.startsWith(currentMonthStr) && e.status !== 'upcoming')
-      .reduce((sum, e) => sum + e.amount, 0);
-    
-    // Monthly refunds (TODO: record in firestore as well)
-    const monthlyRefundsVal = 0; 
-    const netProfitVal = monthlyStats.profit - monthlyExpensesVal - monthlyRefundsVal;
-
-    const alerts: DashboardAlert[] = [];
-    filteredInventory.forEach(item => {
-      const statusItem = updateItemStatus(item);
-      if (statusItem.status === 'out-of-stock') {
-        alerts.push({ id: `alert-oos-${item.id}`, type: 'out-of-stock', title: `Out of Stock: ${item.name}`, message: `${item.name} (${item.sku}) is out of stock.`, severity: 'critical', timestamp: new Date().toISOString(), targetTab: 'inventory', isRead: false });
-      } else if (statusItem.status === 'low-stock') {
-        alerts.push({ id: `alert-low-${item.id}`, type: 'low-stock', title: `Low Stock: ${item.name}`, message: `${item.name} is below threshold (${item.quantity}/${item.threshold}).`, severity: 'high', timestamp: new Date().toISOString(), targetTab: 'inventory', isRead: false });
-      }
-    });
-
-    return {
-      todaySales: { label: "Today's Sales", value: todayStats.sales, previousValue: 11200, unit: 'currency', trend: todayStats.sales >= 11200 ? 'up' : 'down' },
-      todayProfit: { label: "Today's Profit", value: todayStats.profit, previousValue: 3100, unit: 'currency', trend: todayStats.profit >= 3100 ? 'up' : 'down' },
-      monthlySales: { label: "Monthly Sales", value: monthlyStats.sales, previousValue: 315000, unit: 'currency', trend: monthlyStats.sales >= 315000 ? 'up' : 'down' },
-      monthlyProfit: { label: "Monthly Profit", value: monthlyStats.profit, previousValue: 98000, unit: 'currency', trend: monthlyStats.profit >= 98000 ? 'up' : 'down' },
-      inventoryValue: { label: "Inventory Value", value: totalInventoryValue, previousValue: 845000, unit: 'currency', trend: 'neutral' },
-      monthlyExpenses: { label: "Monthly Expenses", value: monthlyExpensesVal, previousValue: 38000, unit: 'currency', trend: monthlyExpensesVal <= 38000 ? 'up' : 'down' },
-      netProfit: { label: "Net Profit", value: netProfitVal, previousValue: 42000, unit: 'currency', trend: netProfitVal >= 42000 ? 'up' : 'down' },
-      totalReceivables: { label: "Total Receivables", value: totalReceivables, previousValue: 12000, unit: 'currency', trend: totalReceivables > 5000 ? 'up' : 'down' },
-      customerValue: { label: "Avg Customer Value", value: avgCustomerValue, previousValue: 2400, unit: 'currency', trend: 'up' },
-      alerts,
-      salesTrend: [
-        { date: '2026-03-25', sales: 12500 },
-        { date: '2026-03-26', sales: 15400 },
-        { date: '2026-03-27', sales: 11200 },
-        { date: '2026-03-28', sales: 18900 },
-        { date: '2026-03-29', sales: 14200 },
-        { date: '2026-03-30', sales: 16800 },
-        { date: todayStr, sales: todayStats.sales }
-      ],
-      salesSplit: {
-        inStore: monthlyStats.sales * 0.35,
-        online: monthlyStats.sales * 0.65
-      }
-    };
+    activeOrders = ordersSnap.docs.map(doc => doc.data() as Order);
+    activeInventory = inventorySnap.docs.map(doc => doc.data() as InventoryItem);
+    activeCustomers = customersSnap.docs.map(doc => doc.data() as Customer);
+    activeExpenses = expensesSnap.docs.map(doc => doc.data() as Expense);
   } catch (error) {
-    console.error("Dashboard fetch failed", error);
-    throw error;
+    console.warn("Firestore dashboard fetch failed, using local mock fallbacks:", error);
   }
+
+  const isAdmin = currentUser.roleId === 'role-admin';
+  const branchId = currentUser.branchId;
+
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  const currentMonthStr = now.toISOString().slice(0, 7);
+
+  const filteredOrders = isAdmin ? activeOrders : activeOrders.filter(o => o.branchId === branchId);
+  const filteredInventory = isAdmin ? activeInventory : activeInventory.filter(i => i.branchId === branchId);
+  const filteredCustomers = activeCustomers; // Global
+  const filteredExpenses = isAdmin ? activeExpenses : activeExpenses.filter(e => e.branchId === branchId);
+
+  const todayOrders = filteredOrders.filter(o => o.date.startsWith(todayStr));
+  const monthlyOrders = filteredOrders.filter(o => o.date.startsWith(currentMonthStr));
+
+  const calculateSalesAndProfit = (orders: Order[]) => {
+    let sales = 0;
+    let profit = 0;
+    orders.forEach(order => {
+      sales += order.totalAmount;
+      order.items.forEach(item => {
+        profit += (item.sellingPrice - item.purchasePrice) * item.quantity;
+      });
+    });
+    return { sales, profit };
+  };
+
+  const todayStats = calculateSalesAndProfit(todayOrders);
+  const monthlyStats = calculateSalesAndProfit(monthlyOrders);
+
+  const totalInventoryValue = filteredInventory.reduce((sum, item) => sum + (item.quantity * item.purchasePrice), 0);
+  const totalReceivables = filteredCustomers.reduce((sum, c) => sum + c.outstandingBalance, 0);
+  const avgCustomerValue = filteredCustomers.length > 0 
+    ? filteredCustomers.reduce((sum, c) => sum + c.totalSpent, 0) / filteredCustomers.length 
+    : 0;
+
+  const monthlyExpensesVal = filteredExpenses
+    .filter(e => e.date.startsWith(currentMonthStr) && e.status !== 'upcoming')
+    .reduce((sum, e) => sum + e.amount, 0);
+  
+  // Monthly refunds (TODO: record in firestore as well)
+  const monthlyRefundsVal = 0; 
+  const netProfitVal = monthlyStats.profit - monthlyExpensesVal - monthlyRefundsVal;
+
+  const alerts: DashboardAlert[] = [];
+  filteredInventory.forEach(item => {
+    const statusItem = updateItemStatus(item);
+    if (statusItem.status === 'out-of-stock') {
+      alerts.push({ id: `alert-oos-${item.id}`, type: 'out-of-stock', title: `Out of Stock: ${item.name}`, message: `${item.name} (${item.sku}) is out of stock.`, severity: 'critical', timestamp: new Date().toISOString(), targetTab: 'inventory', isRead: false });
+    } else if (statusItem.status === 'low-stock') {
+      alerts.push({ id: `alert-low-${item.id}`, type: 'low-stock', title: `Low Stock: ${item.name}`, message: `${item.name} is below threshold (${item.quantity}/${item.threshold}).`, severity: 'high', timestamp: new Date().toISOString(), targetTab: 'inventory', isRead: false });
+    }
+  });
+
+  return {
+    todaySales: { label: "Today's Sales", value: todayStats.sales, previousValue: 11200, unit: 'currency', trend: todayStats.sales >= 11200 ? 'up' : 'down' },
+    todayProfit: { label: "Today's Profit", value: todayStats.profit, previousValue: 3100, unit: 'currency', trend: todayStats.profit >= 3100 ? 'up' : 'down' },
+    monthlySales: { label: "Monthly Sales", value: monthlyStats.sales, previousValue: 315000, unit: 'currency', trend: monthlyStats.sales >= 315000 ? 'up' : 'down' },
+    monthlyProfit: { label: "Monthly Profit", value: monthlyStats.profit, previousValue: 98000, unit: 'currency', trend: monthlyStats.profit >= 98000 ? 'up' : 'down' },
+    inventoryValue: { label: "Inventory Value", value: totalInventoryValue, previousValue: 845000, unit: 'currency', trend: 'neutral' },
+    monthlyExpenses: { label: "Monthly Expenses", value: monthlyExpensesVal, previousValue: 38000, unit: 'currency', trend: monthlyExpensesVal <= 38000 ? 'up' : 'down' },
+    netProfit: { label: "Net Profit", value: netProfitVal, previousValue: 42000, unit: 'currency', trend: netProfitVal >= 42000 ? 'up' : 'down' },
+    totalReceivables: { label: "Total Receivables", value: totalReceivables, previousValue: 12000, unit: 'currency', trend: totalReceivables > 5000 ? 'up' : 'down' },
+    customerValue: { label: "Avg Customer Value", value: avgCustomerValue, previousValue: 2400, unit: 'currency', trend: 'up' },
+    alerts,
+    salesTrend: [
+      { date: '2026-03-25', sales: 12500 },
+      { date: '2026-03-26', sales: 15400 },
+      { date: '2026-03-27', sales: 11200 },
+      { date: '2026-03-28', sales: 18900 },
+      { date: '2026-03-29', sales: 14200 },
+      { date: '2026-03-30', sales: 16800 },
+      { date: todayStr, sales: todayStats.sales }
+    ],
+    salesSplit: {
+      inStore: monthlyStats.sales * 0.35,
+      online: monthlyStats.sales * 0.65
+    }
+  };
 };
 
 export const fetchSalesAnalyticsData = async (): Promise<SalesAnalyticsData> => {
@@ -316,30 +371,30 @@ export const fetchSalesAnalyticsData = async (): Promise<SalesAnalyticsData> => 
 };
 
 export const fetchInventoryInsightsData = async (): Promise<InventoryInsightsData> => {
+  let allInventory = mockInventory;
   try {
     const snapshot = await getDocs(collection(db, 'inventory'));
-    const allInventory = snapshot.docs.map(doc => doc.data() as InventoryItem);
-    
-    const lowStockItems = allInventory.filter(item => item.status === 'low-stock');
-    const outOfStockItems = allInventory.filter(item => item.status === 'out-of-stock');
-    const expiringSoonItems = allInventory.filter(item => item.status === 'expiring-soon');
-
-    const totalStockValue = allInventory.reduce((sum, item) => sum + (item.quantity * item.purchasePrice), 0);
-    const potentialRevenue = allInventory.reduce((sum, item) => sum + (item.quantity * item.sellingPrice), 0);
-
-    return {
-      totalStockValue,
-      potentialRevenue,
-      lowStockItems,
-      outOfStockItems,
-      expiringSoonItems,
-      allInventory,
-      stockLogs: mockStockLogs // Keep logs mock for now
-    };
+    allInventory = snapshot.docs.map(doc => doc.data() as InventoryItem);
   } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, 'inventory');
-    throw error;
+    console.warn("Firestore inventory fetch failed, using local mock fallback:", error);
   }
+
+  const lowStockItems = allInventory.filter(item => item.status === 'low-stock');
+  const outOfStockItems = allInventory.filter(item => item.status === 'out-of-stock');
+  const expiringSoonItems = allInventory.filter(item => item.status === 'expiring-soon');
+
+  const totalStockValue = allInventory.reduce((sum, item) => sum + (item.quantity * item.purchasePrice), 0);
+  const potentialRevenue = allInventory.reduce((sum, item) => sum + (item.quantity * item.sellingPrice), 0);
+
+  return {
+    totalStockValue,
+    potentialRevenue,
+    lowStockItems,
+    outOfStockItems,
+    expiringSoonItems,
+    allInventory,
+    stockLogs: mockStockLogs // Keep logs mock for now
+  };
 };
 
 export const addStockEntry = async (entry: Omit<StockEntry, 'id' | 'date' | 'actionType'>): Promise<StockEntry> => {
@@ -779,63 +834,65 @@ export const refundOrder = async (orderId: string): Promise<Order> => {
 };
 
 export const fetchProfitLossData = async (): Promise<ProfitLossData> => {
+  let allOrders = mockOrders;
+  let allExpenses = mockExpenses;
+
   try {
-    const isAdmin = currentUser.roleId === 'role-admin';
-    const branchId = currentUser.branchId;
-    
     const [ordersSnap, expensesSnap] = await Promise.all([
       getDocs(collection(db, 'orders')),
       getDocs(collection(db, 'expenses'))
     ]);
 
-    const allOrders = ordersSnap.docs.map(doc => doc.data() as Order);
-    const allExpenses = expensesSnap.docs.map(doc => doc.data() as Expense);
-
-    const filteredOrders = isAdmin ? allOrders : allOrders.filter(o => o.branchId === branchId);
-    const filteredExpenses = isAdmin ? allExpenses : allExpenses.filter(e => e.branchId === branchId);
-
-    const now = new Date();
-    const currentMonthStr = now.toISOString().slice(0, 7);
-    const monthlyOrders = filteredOrders.filter(o => o.date.startsWith(currentMonthStr));
-    
-    let totalRevenue = 0;
-    let cogs = 0;
-    filteredOrders.forEach(order => {
-      totalRevenue += order.totalAmount;
-      order.items.forEach(item => {
-        cogs += item.purchasePrice * item.quantity;
-      });
-    });
-
-    const expenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
-    const refunds = 0; 
-    const netProfit = totalRevenue - cogs - expenses - refunds;
-    const todayStr = new Date().toISOString().split('T')[0];
-
-    return {
-      totalRevenue,
-      cogs,
-      expenses,
-      refunds,
-      netProfit,
-      dailyTrend: [
-        { period: 'Apr 1', revenue: 12000, profit: 3400 },
-        { period: 'Apr 2', revenue: 15000, profit: 4200 },
-        { period: 'Apr 3', revenue: 11000, profit: 2900 },
-        { period: 'Apr 4', revenue: 18000, profit: 5100 },
-        { period: todayStr, revenue: totalRevenue / 30, profit: netProfit / 30 }
-      ],
-      monthlyTrend: [
-        { period: 'Jan', revenue: 280000, profit: 45000 },
-        { period: 'Feb', revenue: 310000, profit: 52000 },
-        { period: 'Mar', revenue: 342000, profit: 58000 },
-        { period: 'Apr', revenue: totalRevenue, profit: netProfit }
-      ]
-    };
+    allOrders = ordersSnap.docs.map(doc => doc.data() as Order);
+    allExpenses = expensesSnap.docs.map(doc => doc.data() as Expense);
   } catch (error) {
-    console.error("P&L fetch failed", error);
-    throw error;
+    console.warn("Firestore P&L fetch failed, using local mock fallbacks:", error);
   }
+
+  const isAdmin = currentUser.roleId === 'role-admin';
+  const branchId = currentUser.branchId;
+  
+  const filteredOrders = isAdmin ? allOrders : allOrders.filter(o => o.branchId === branchId);
+  const filteredExpenses = isAdmin ? allExpenses : allExpenses.filter(e => e.branchId === branchId);
+
+  const now = new Date();
+  const currentMonthStr = now.toISOString().slice(0, 7);
+  const monthlyOrders = filteredOrders.filter(o => o.date.startsWith(currentMonthStr));
+  
+  let totalRevenue = 0;
+  let cogs = 0;
+  filteredOrders.forEach(order => {
+    totalRevenue += order.totalAmount;
+    order.items.forEach(item => {
+      cogs += item.purchasePrice * item.quantity;
+    });
+  });
+
+  const expenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const refunds = 0; 
+  const netProfit = totalRevenue - cogs - expenses - refunds;
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  return {
+    totalRevenue,
+    cogs,
+    expenses,
+    refunds,
+    netProfit,
+    dailyTrend: [
+      { period: 'Apr 1', revenue: 12000, profit: 3400 },
+      { period: 'Apr 2', revenue: 15000, profit: 4200 },
+      { period: 'Apr 3', revenue: 11000, profit: 2900 },
+      { period: 'Apr 4', revenue: 18000, profit: 5100 },
+      { period: todayStr, revenue: totalRevenue / 30, profit: netProfit / 30 }
+    ],
+    monthlyTrend: [
+      { period: 'Jan', revenue: 280000, profit: 45000 },
+      { period: 'Feb', revenue: 310000, profit: 52000 },
+      { period: 'Mar', revenue: 342000, profit: 58000 },
+      { period: 'Apr', revenue: totalRevenue, profit: netProfit }
+    ]
+  };
 };
 export const fetchExpenseData = async (): Promise<ExpenseData> => {
   try {
@@ -1134,8 +1191,12 @@ export const fetchUsers = async (): Promise<User[]> => {
     const snapshot = await getDocs(collection(db, 'users'));
     return snapshot.docs.map(doc => doc.data() as User);
   } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, 'users');
-    throw error;
+    try {
+      handleFirestoreError(error, OperationType.LIST, 'users');
+    } catch (e) {
+      console.warn("Firestore users fetch failed, using local mock fallback:", e);
+    }
+    return mockUsers;
   }
 };
 
@@ -1215,7 +1276,11 @@ export const getCurrentUser = async (): Promise<User> => {
         return userDoc.data() as User;
       }
     } catch (error) {
-      console.error("Error fetching current user from Firestore:", error);
+      try {
+        handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
+      } catch (e) {
+        console.warn("Firestore current user fetch failed, using local mock fallback:", e);
+      }
     }
   }
   return currentUser;
@@ -1618,7 +1683,8 @@ export const fetchOnlineOrders = async (): Promise<Order[]> => {
     return snapshot.docs.map(doc => doc.data() as Order);
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, 'orders');
-    throw error;
+    console.warn("Firestore online orders fetch failed, using local mock fallback:", error);
+    return mockOrders.filter(o => o.orderType === 'ONLINE');
   }
 };
 

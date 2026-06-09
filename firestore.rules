@@ -16,8 +16,8 @@ service cloud.firestore {
 
     function isEmailVerified() {
       return isSignedIn() && (
-        request.auth.token.email_verified == true || 
-        request.auth.token.firebase.sign_in_provider == 'anonymous' // Bypass for testing
+        ('email_verified' in request.auth.token && request.auth.token.email_verified == true) || 
+        ('firebase' in request.auth.token && 'sign_in_provider' in request.auth.token.firebase && request.auth.token.firebase.sign_in_provider == 'anonymous') // Bypass for testing
       );
     }
 
@@ -28,8 +28,8 @@ service cloud.firestore {
     // Admin check - includes the developer as a bootstrapped admin
     function isAdmin() {
       return isSignedIn() && (
-        (request.auth.token.email == "usamah.m.qamar@gmail.com" && request.auth.token.email_verified == true) ||
-        (request.auth.token.firebase.sign_in_provider == 'anonymous') || // Bypass for testing
+        ('email' in request.auth.token && request.auth.token.email == "usamah.m.qamar@gmail.com" && 'email_verified' in request.auth.token && request.auth.token.email_verified == true) ||
+        ('firebase' in request.auth.token && 'sign_in_provider' in request.auth.token.firebase && request.auth.token.firebase.sign_in_provider == 'anonymous') || // Bypass for testing
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roleId == 'role-admin')
       );
@@ -98,7 +98,7 @@ service cloud.firestore {
     }
 
     match /orders/{orderId} {
-      allow list: if isSignedIn() && (isAdmin() || resource.data.customer.phone != null);
+      allow list: if isSignedIn() && (isAdmin() || ('customer' in resource.data && 'phone' in resource.data.customer && resource.data.customer.phone != null));
       allow get: if true; // Needed for public tracking
       allow create: if true; // Public ordering
       allow update: if isEmailVerified() && isAdmin() && isValidOrder(incoming());
