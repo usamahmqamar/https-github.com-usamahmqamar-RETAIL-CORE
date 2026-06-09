@@ -75,9 +75,14 @@ export const VendorManagement: React.FC<VendorManagementProps> = ({ onDataUpdate
 
   const loadData = async () => {
     setLoading(true);
-    const result = await fetchVendorManagementData();
-    setData(result);
-    setLoading(false);
+    try {
+      const result = await fetchVendorManagementData();
+      setData(result);
+    } catch (error) {
+      console.error("Failed to load vendor data:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {

@@ -82,5 +82,10 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     path
   };
   console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  
+  // Only throw error for write operations (CREATE, UPDATE, DELETE, WRITE)
+  // For read operations (LIST, GET), let the caller gracefully return mock fallbacks
+  if (operationType !== OperationType.LIST && operationType !== OperationType.GET) {
+    throw new Error(JSON.stringify(errInfo));
+  }
 }

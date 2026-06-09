@@ -55,8 +55,12 @@ export const POS: React.FC<POSProps> = ({ onOrderComplete, currentUser, lastScan
 
   useEffect(() => {
     const loadInventory = async () => {
-      const data = await fetchInventoryInsightsData();
-      setInventory(data.allInventory);
+      try {
+        const data = await fetchInventoryInsightsData();
+        setInventory(data.allInventory || []);
+      } catch (error) {
+        console.error("Failed to load inventory in POS:", error);
+      }
     };
     loadInventory();
   }, []);
