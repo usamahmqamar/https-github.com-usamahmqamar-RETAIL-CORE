@@ -246,22 +246,37 @@ export const fetchDashboardData = async (): Promise<DashboardData> => {
   const todayStr = now.toISOString().split('T')[0];
   const currentMonthStr = now.toISOString().slice(0, 7);
 
-  const filteredOrders = isAdmin ? activeOrders : activeOrders.filter(o => o.branchId === branchId);
-  const filteredInventory = isAdmin ? activeInventory : activeInventory.filter(i => i.branchId === branchId);
-  const filteredCustomers = activeCustomers; // Global
-  const filteredExpenses = isAdmin ? activeExpenses : activeExpenses.filter(e => e.branchId === branchId);
+  const filteredOrders = isAdmin 
+    ? activeOrders 
+    : activeOrders.filter(o => o && o.branchId === branchId);
+  const filteredInventory = isAdmin 
+    ? activeInventory 
+    : activeInventory.filter(i => i && i.branchId === branchId);
+  const filteredCustomers = activeCustomers || []; // Global
+  const filteredExpenses = isAdmin 
+    ? activeExpenses 
+    : activeExpenses.filter(e => e && e.branchId === branchId);
 
-  const todayOrders = filteredOrders.filter(o => o.date.startsWith(todayStr));
-  const monthlyOrders = filteredOrders.filter(o => o.date.startsWith(currentMonthStr));
+  const todayOrders = filteredOrders.filter(o => o && o.date && typeof o.date === 'string' && o.date.startsWith(todayStr));
+  const monthlyOrders = filteredOrders.filter(o => o && o.date && typeof o.date === 'string' && o.date.startsWith(currentMonthStr));
 
   const calculateSalesAndProfit = (orders: Order[]) => {
     let sales = 0;
     let profit = 0;
     orders.forEach(order => {
-      sales += order.totalAmount;
-      order.items.forEach(item => {
-        profit += (item.sellingPrice - item.purchasePrice) * item.quantity;
-      });
+      if (order) {
+        sales += order.totalAmount || 0;
+        if (Array.isArray(order.items)) {
+          order.items.forEach(item => {
+            if (item) {
+              const selling = item.sellingPrice || 0;
+              const purchase = item.purchasePrice || 0;
+              const qty = item.quantity || 0;
+              profit += (selling - purchase) * qty;
+            }
+          });
+        }
+      }
     });
     return { sales, profit };
   };
@@ -269,15 +284,15 @@ export const fetchDashboardData = async (): Promise<DashboardData> => {
   const todayStats = calculateSalesAndProfit(todayOrders);
   const monthlyStats = calculateSalesAndProfit(monthlyOrders);
 
-  const totalInventoryValue = filteredInventory.reduce((sum, item) => sum + (item.quantity * item.purchasePrice), 0);
-  const totalReceivables = filteredCustomers.reduce((sum, c) => sum + c.outstandingBalance, 0);
+  const totalInventoryValue = filteredInventory.reduce((sum, item) => sum + ((item.quantity || 0) * (item.purchasePrice || 0)), 0);
+  const totalReceivables = filteredCustomers.reduce((sum, c) => sum + (c.outstandingBalance || 0), 0);
   const avgCustomerValue = filteredCustomers.length > 0 
-    ? filteredCustomers.reduce((sum, c) => sum + c.totalSpent, 0) / filteredCustomers.length 
+    ? filteredCustomers.reduce((sum, c) => sum + (c.totalSpent || 0), 0) / filteredCustomers.length 
     : 0;
 
   const monthlyExpensesVal = filteredExpenses
-    .filter(e => e.date.startsWith(currentMonthStr) && e.status !== 'upcoming')
-    .reduce((sum, e) => sum + e.amount, 0);
+    .filter(e => e && e.date && typeof e.date === 'string' && e.date.startsWith(currentMonthStr) && e.status !== 'upcoming')
+    .reduce((sum, e) => sum + (e.amount || 0), 0);
   
   // Monthly refunds (TODO: record in firestore as well)
   const monthlyRefundsVal = 0; 
@@ -285,11 +300,13 @@ export const fetchDashboardData = async (): Promise<DashboardData> => {
 
   const alerts: DashboardAlert[] = [];
   filteredInventory.forEach(item => {
-    const statusItem = updateItemStatus(item);
-    if (statusItem.status === 'out-of-stock') {
-      alerts.push({ id: `alert-oos-${item.id}`, type: 'out-of-stock', title: `Out of Stock: ${item.name}`, message: `${item.name} (${item.sku}) is out of stock.`, severity: 'critical', timestamp: new Date().toISOString(), targetTab: 'inventory', isRead: false });
-    } else if (statusItem.status === 'low-stock') {
-      alerts.push({ id: `alert-low-${item.id}`, type: 'low-stock', title: `Low Stock: ${item.name}`, message: `${item.name} is below threshold (${item.quantity}/${item.threshold}).`, severity: 'high', timestamp: new Date().toISOString(), targetTab: 'inventory', isRead: false });
+    if (item) {
+      const statusItem = updateItemStatus(item);
+      if (statusItem.status === 'out-of-stock') {
+        alerts.push({ id: `alert-oos-${item.id}`, type: 'out-of-stock', title: `Out of Stock: ${item.name}`, message: `${item.name} (${item.sku}) is out of stock.`, severity: 'critical', timestamp: new Date().toISOString(), targetTab: 'inventory', isRead: false });
+      } else if (statusItem.status === 'low-stock') {
+        alerts.push({ id: `alert-low-${item.id}`, type: 'low-stock', title: `Low Stock: ${item.name}`, message: `${item.name} is below threshold (${item.quantity}/${item.threshold}).`, severity: 'high', timestamp: new Date().toISOString(), targetTab: 'inventory', isRead: false });
+      }
     }
   });
 
@@ -852,26 +869,36 @@ export const fetchProfitLossData = async (): Promise<ProfitLossData> => {
   const isAdmin = currentUser.roleId === 'role-admin';
   const branchId = currentUser.branchId;
   
-  const filteredOrders = isAdmin ? allOrders : allOrders.filter(o => o.branchId === branchId);
-  const filteredExpenses = isAdmin ? allExpenses : allExpenses.filter(e => e.branchId === branchId);
+  const filteredOrders = isAdmin 
+    ? allOrders 
+    : allOrders.filter(o => o && o.branchId === branchId);
+  const filteredExpenses = isAdmin 
+    ? allExpenses 
+    : allExpenses.filter(e => e && e.branchId === branchId);
 
   const now = new Date();
   const currentMonthStr = now.toISOString().slice(0, 7);
-  const monthlyOrders = filteredOrders.filter(o => o.date.startsWith(currentMonthStr));
+  const todayStr = now.toISOString().split('T')[0];
+  const monthlyOrders = filteredOrders.filter(o => o && o.date && typeof o.date === 'string' && o.date.startsWith(currentMonthStr));
   
   let totalRevenue = 0;
   let cogs = 0;
   filteredOrders.forEach(order => {
-    totalRevenue += order.totalAmount;
-    order.items.forEach(item => {
-      cogs += item.purchasePrice * item.quantity;
-    });
+    if (order) {
+      totalRevenue += order.totalAmount || 0;
+      if (Array.isArray(order.items)) {
+        order.items.forEach(item => {
+          if (item) {
+            cogs += (item.purchasePrice || 0) * (item.quantity || 0);
+          }
+        });
+      }
+    }
   });
 
-  const expenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const expenses = filteredExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
   const refunds = 0; 
   const netProfit = totalRevenue - cogs - expenses - refunds;
-  const todayStr = new Date().toISOString().split('T')[0];
 
   return {
     totalRevenue,
@@ -912,12 +939,12 @@ export const fetchExpenseData = async (): Promise<ExpenseData> => {
     const filteredExpenses = isAdmin ? expenses : expenses.filter(e => e.branchId === branchId);
 
     const categoryBreakdown = [
-      { name: 'Payroll', value: filteredExpenses.filter(e => e.category === 'Payroll').reduce((sum, e) => sum + e.amount, 0), color: '#3B82F6' },
-      { name: 'Rent', value: filteredExpenses.filter(e => e.category === 'Rent').reduce((sum, e) => sum + e.amount, 0), color: '#10B981' },
-      { name: 'Inventory', value: filteredExpenses.filter(e => e.category === 'Inventory').reduce((sum, e) => sum + e.amount, 0), color: '#F59E0B' },
-      { name: 'Marketing', value: filteredExpenses.filter(e => e.category === 'Marketing').reduce((sum, e) => sum + e.amount, 0), color: '#EF4444' },
-      { name: 'Utilities', value: filteredExpenses.filter(e => e.category === 'Utilities').reduce((sum, e) => sum + e.amount, 0), color: '#8B5CF6' },
-      { name: 'Other', value: filteredExpenses.filter(e => !['Payroll', 'Rent', 'Inventory', 'Marketing', 'Utilities'].includes(e.category)).reduce((sum, e) => sum + e.amount, 0), color: '#6B7280' },
+      { name: 'Payroll', value: filteredExpenses.filter(e => e && e.category === 'Payroll').reduce((sum, e) => sum + (e.amount || 0), 0), color: '#3B82F6' },
+      { name: 'Rent', value: filteredExpenses.filter(e => e && e.category === 'Rent').reduce((sum, e) => sum + (e.amount || 0), 0), color: '#10B981' },
+      { name: 'Inventory', value: filteredExpenses.filter(e => e && e.category === 'Inventory').reduce((sum, e) => sum + (e.amount || 0), 0), color: '#F59E0B' },
+      { name: 'Marketing', value: filteredExpenses.filter(e => e && e.category === 'Marketing').reduce((sum, e) => sum + (e.amount || 0), 0), color: '#EF4444' },
+      { name: 'Utilities', value: filteredExpenses.filter(e => e && e.category === 'Utilities').reduce((sum, e) => sum + (e.amount || 0), 0), color: '#8B5CF6' },
+      { name: 'Other', value: filteredExpenses.filter(e => e && !['Payroll', 'Rent', 'Inventory', 'Marketing', 'Utilities'].includes(e.category || '')).reduce((sum, e) => sum + (e.amount || 0), 0), color: '#6B7280' },
     ];
 
     const now = new Date();

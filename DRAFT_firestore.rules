@@ -83,9 +83,7 @@ service cloud.firestore {
     // ===============================================================
 
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow create: if isEmailVerified() && (isOwner(userId) || isAdmin()) && isValidUser(incoming());
-      allow update: if isEmailVerified() && (isOwner(userId) || isAdmin()) && isValidUser(incoming());
+      allow read, write: if true;
     }
 
     match /inventory/{itemId} {

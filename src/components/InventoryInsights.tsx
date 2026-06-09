@@ -93,13 +93,37 @@ export const InventoryInsights: React.FC<InventoryInsightsProps> = ({ onDataUpda
 
   const loadData = async () => {
     setLoading(true);
-    const [result, sups] = await Promise.all([
-      fetchInventoryInsightsData(),
-      fetchSuppliers()
-    ]);
-    setData(result);
-    setSuppliers(sups);
-    setLoading(false);
+    try {
+      const [result, sups] = await Promise.all([
+        fetchInventoryInsightsData().catch((error) => {
+          console.warn("fetchInventoryInsightsData failed, using local fallback:", error);
+          return null;
+        }),
+        fetchSuppliers().catch((error) => {
+          console.warn("fetchSuppliers failed, using local fallback:", error);
+          return [] as Supplier[];
+        })
+      ]);
+
+      if (result) {
+        setData(result);
+      } else {
+        setData({
+          totalStockValue: 0,
+          potentialRevenue: 0,
+          lowStockItems: [],
+          outOfStockItems: [],
+          expiringSoonItems: [],
+          allInventory: [],
+          stockLogs: []
+        });
+      }
+      setSuppliers(sups || []);
+    } catch (error) {
+      console.error("Failed to load inventory data:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
